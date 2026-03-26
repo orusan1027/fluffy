@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>♠ PokerLog — プロのための収支管理</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   LUXURY POKER ROOM DESIGN SYSTEM
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Noto+Serif+JP:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
+:root{--felt:#0b2416;--felt2:#0f2d1c;--felt3:#143522;--felt4:#1a3e2a;--gold:#c9a84c;--gold2:#e8c96a;--gold3:#a0803a;--gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.35);--text:#f5ead8;--text2:#c4b89a;--text3:#7a6e58;--green:#4ade80;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa;--radius:10px;--radius-sm:6px;--radius-lg:16px;}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Hiragino Sans','Yu Gothic',sans-serif;background:var(--felt);color:var(--text);min-height:100vh;background-image:radial-gradient(ellipse at 20% 0%, rgba(201,168,76,0.06) 0%, transparent 60%),radial-gradient(ellipse at 80% 100%, rgba(201,168,76,0.04) 0%, transparent 60%);}
+/* CSS is extensive - using minimal for test */
+.notify{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--felt2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:12px 18px;font-size:13px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 20px rgba(201,168,76,.1);transform:translateY(140%);transition:transform .3s;z-index:500;max-width:300px;}
+.notify.show{transform:translateY(0)}
+.notify.ok{border-left:3px solid var(--green)}.notify.warn{border-left:3px solid var(--amber)}.notify.err{border-left:3px solid var(--red)}
+#debugBadge{position:fixed;bottom:8px;right:8px;z-index:9999;font-size:10px;padding:4px 8px;border-radius:8px;background:rgba(0,0,0,.75);border:1px solid rgba(124,247,255,.25);color:#8ea4dd;font-family:monospace;pointer-events:none;display:none}
+</style>
+<body>
+<!-- PLACEHOLDER FOR NOW -->
+<div class="notify" id="notify"></div>
+<div id="debugBadge"><span id="dbFb">⚡—</span><span id="dbAuth" style="margin-left:6px">👤—</span><span id="dbFs" style="margin-left:6px">💾—</span></div>
+<script>
+const DEBUG_MODE=true;
+function updateDebugBadge(type,val){if(!DEBUG_MODE)return;const b=document.getElementById('debugBadge');if(!b)return;b.style.display='block';const m={fb:'dbFb',auth:'dbAuth',fs:'dbFs'};const el=document.getElementById(m[type]);if(el)el.textContent=val;}
+let notifyTimer;
+const notify=(msg,type='ok')=>{clearTimeout(notifyTimer);const el=document.getElementById('notify');el.textContent=msg;el.className='notify '+type+' show';notifyTimer=setTimeout(()=>el.classList.remove('show'),3000);};
+updateDebugBadge('fb','✓');
+notify('PokerLog インデックス作成中...','ok');
+console.log('[PokerLog] Page loaded');
+</script>
+</body>
+</html>
