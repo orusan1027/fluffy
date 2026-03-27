@@ -963,11 +963,24 @@ async function testFirestoreWrite(){
     console.warn('[PokerLog] testFS skip: ready='+isFirebaseReady+' user='+(currentUser?'yes':'no'));
     notify('FS診断: Firebase未初期化','err');return;
   }
+  // まずREST APIで直接疎通確認
+  try{
+    const token=await currentUser.getIdToken();
+    const url=`https://firestore.googleapis.com/v1/projects/pro-f6323/databases/(default)/documents`;
+    const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    console.log('[PokerLog] REST API status:',res.status);
+    if(!res.ok){
+      notify('FS REST失敗: HTTP '+res.status,'err');
+      console.error('[PokerLog] REST body:',await res.text());
+      return;
+    }
+  }catch(re){console.warn('[PokerLog] REST test:',re.message);}
+  // SDK書き込みテスト
   try{
     await db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
       .set({ts:Date.now(),ok:true},{merge:true});
     console.log('[PokerLog] testFS: WRITE OK ✓');
-    notify('Firestore接続OK ✓ 書き込み成功','info');
+    notify('Firestore接続OK ✓ データ同期有効','info');
     updateDebugBadge('fs','💾✓');
   }catch(e){
     console.error('[PokerLog] testFS ERR:',e.code,e.message);
