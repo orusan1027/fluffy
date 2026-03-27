@@ -816,9 +816,7 @@ try{
   db=firebase.firestore();
   auth=firebase.auth();
   isFirebaseReady=true;
-  // Long Polling を別 try に分離 — 失敗しても isFirebaseReady=true は維持
-  try{db.settings({experimentalForceLongPolling:true,merge:true});}
-  catch(se){console.warn('[PokerLog] settings skipped:',se);}
+  console.log('[PokerLog] Firebase ready ✓');
 }catch(e){console.error('[PokerLog] Firebase init failed:',e);}
 
 // ================================================================
