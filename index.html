@@ -814,10 +814,11 @@ let isFirebaseReady=false,db,auth;
 try{
   firebase.initializeApp(firebaseConfig);
   db=firebase.firestore();
-  // WebSocketが使えない環境向けにLong Pollingを有効化
-  db.settings({experimentalForceLongPolling:true,merge:true});
   auth=firebase.auth();
   isFirebaseReady=true;
+  // Long Polling を別 try に分離 — 失敗しても isFirebaseReady=true は維持
+  try{db.settings({experimentalForceLongPolling:true,merge:true});}
+  catch(se){console.warn('[PokerLog] settings skipped:',se);}
 }catch(e){console.error('[PokerLog] Firebase init failed:',e);}
 
 // ================================================================
