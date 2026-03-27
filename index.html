@@ -822,8 +822,38 @@ try{
       // compat script registers 'firestore' component → initializeFirestore returns compat Firestore
       // which has .collection()/.batch()/.enableNetwork() → use db=fi directly
       const fi=fs.initializeFirestore(firebase.app(),{},'default');
-      console.log('[PokerLog] fi.collection type:',typeof fi.collection,'constructor:',fi.constructor?.name);
-      db=fi;
+      console.log('[PokerLog] fi:',fi.constructor?.name,'fs.collection:',typeof fs.collection);
+      function _D(...s){
+        const r=fs.doc(fi,...s);
+        return{_r:r,id:r.id,
+          set:(d,o)=>fs.setDoc(r,d,o||{}),
+          get:()=>fs.getDoc(r).then(sn=>({exists:sn.exists(),data:()=>sn.data(),id:sn.id})),
+          delete:()=>fs.deleteDoc(r),
+          update:(d)=>fs.updateDoc(r,d),
+          collection:(c)=>_C(...s,c),
+          onSnapshot:(cb,e)=>fs.onSnapshot(r,cb,e)};
+      }
+      function _C(...s){
+        const cr=fs.collection(fi,...s);
+        return _Q(cr,cr,s);
+      }
+      function _Q(q,cr,s){
+        return{
+          doc:(id)=>_D(...s,id),
+          get:()=>fs.getDocs(q),
+          add:(d)=>fs.addDoc(cr,d),
+          where:(f,op,v)=>_Q(fs.query(q,fs.where(f,op,v)),cr,s),
+          orderBy:(f,d)=>_Q(fs.query(q,fs.orderBy(f,d||'asc')),cr,s),
+          limit:(n)=>_Q(fs.query(q,fs.limit(n)),cr,s),
+          limitToLast:(n)=>_Q(fs.query(q,fs.limitToLast(n)),cr,s),
+          onSnapshot:(cb,e)=>fs.onSnapshot(q,cb,e)};
+      }
+      db={
+        collection:(c)=>_C(c),
+        batch:()=>{const b=fs.writeBatch(fi);return{set:(w,d,o)=>b.set(w._r,d,o||{}),update:(w,d)=>b.update(w._r,d),delete:(w)=>b.delete(w._r),commit:()=>b.commit()};},
+        enableNetwork:()=>fs.enableNetwork(fi),
+        disableNetwork:()=>fs.disableNetwork(fi)
+      };
       isFirebaseReady=true;
       updateDebugBadge('fb','⚡✓');
       console.log('[PokerLog] Firebase+Firestore ready ✓ (db=default)');
