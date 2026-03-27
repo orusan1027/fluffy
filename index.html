@@ -969,15 +969,17 @@ function deleteDoc(col,id){
 async function fetchFromFirestore(){
   if(!currentUser||!isFirebaseReady)return;
   const uid=currentUser.uid;
+  // 10秒でタイムアウト
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
   try{
-    const [sSnap,tSnap,crSnap,exSnap,profSnap,ciSnap]=await Promise.all([
+    const [sSnap,tSnap,crSnap,exSnap,profSnap,ciSnap]=await Promise.race([Promise.all([
       db.collection('userData').doc(uid).collection('sessions').orderBy('date','desc').get(),
       db.collection('userData').doc(uid).collection('txs').orderBy('date','desc').get(),
       db.collection('userData').doc(uid).collection('crTxs').orderBy('date','desc').get(),
       db.collection('userData').doc(uid).collection('expenses').orderBy('date','desc').get(),
       db.collection('users').doc(uid).get(),
       db.collection('userData').doc(uid).collection('contractInfo').doc('main').get()
-    ]);
+    ]),timeout]);
     sessions=sSnap.docs.map(d=>({id:d.id,...d.data()}));
     txList_data=tSnap.docs.map(d=>({id:d.id,...d.data()}));
     crTxList_data=crSnap.docs.map(d=>({id:d.id,...d.data()}));
@@ -1026,7 +1028,8 @@ async function emailSignup(){
     const cred=await auth.createUserWithEmailAndPassword(email,pass);
     user=cred.user;
     await user.updateProfile({displayName:name});
-    await db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    // Firestoreへの保存はnon-blocking（接続失敗でもサインアップを止めない）
+    db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>console.warn('[PokerLog] profile save:',e));
     fsSaved=true;
     try{await user.sendEmailVerification();}catch(ve){console.warn('[PokerLog] sendEmailVerification:',ve);}
     await auth.signOut();
