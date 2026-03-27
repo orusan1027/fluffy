@@ -1342,6 +1342,12 @@ function renderStats(){
   setT('backupSessionCount',all.length+'件');
   setT('backupLastUpdate',all[0]?.date||'—');
   setT('heroSync',isFirebaseReady?'Active':'Local');
+  // Hero section stats
+  setT('heroNet',`${sign}¥${totalProfitJPY.toLocaleString()}`,col);
+  setT('heroWr',`${wr}%`);
+  setT('heroSessions',all.length);
+  const heroMeta=document.getElementById('heroMeta');
+  if(heroMeta)heroMeta.textContent=all.length?`${all.length}セッション / ${totalHours.toFixed(1)}h / 時給¥${hourly.toLocaleString()}`:'稼働データが蓄積されるほど、ダッシュボードが鮮明になります。';
 }
 
 // ================================================================
