@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Noto+Serif+JP:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
 :root{
@@ -812,46 +813,17 @@ const firebaseConfig={
   measurementId:"G-EZGR97HEBY"
 };
 let isFirebaseReady=false,db,auth;
-function _fsts(){return window._fsTs?window._fsTs():null;}
+function _fsts(){try{return firebase.firestore.FieldValue.serverTimestamp();}catch(e){return null;}}
 try{
   firebase.initializeApp(firebaseConfig);
   auth=firebase.auth();
   import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(function(fs){
     try{
-      const app=firebase.app()._delegate;
-      const fi=fs.initializeFirestore(app,{},'default');
-      window._fsTs=()=>fs.serverTimestamp();
-      function _D(...s){
-        const r=fs.doc(fi,...s);
-        return{_r:r,id:r.id,
-          set:(d,o)=>fs.setDoc(r,d,o||{}),
-          get:()=>fs.getDoc(r).then(sn=>({exists:sn.exists(),data:()=>sn.data(),id:sn.id})),
-          delete:()=>fs.deleteDoc(r),
-          update:(d)=>fs.updateDoc(r,d),
-          collection:(c)=>_C(...s,c),
-          onSnapshot:(cb,e)=>fs.onSnapshot(r,cb,e)};
-      }
-      function _C(...s){
-        const cr=fs.collection(fi,...s);
-        return _Q(cr,cr,s);
-      }
-      function _Q(q,cr,s){
-        return{
-          doc:(id)=>_D(...s,id),
-          get:()=>fs.getDocs(q),
-          add:(d)=>fs.addDoc(cr,d),
-          where:(f,op,v)=>_Q(fs.query(q,fs.where(f,op,v)),cr,s),
-          orderBy:(f,d)=>_Q(fs.query(q,fs.orderBy(f,d||'asc')),cr,s),
-          limit:(n)=>_Q(fs.query(q,fs.limit(n)),cr,s),
-          limitToLast:(n)=>_Q(fs.query(q,fs.limitToLast(n)),cr,s),
-          onSnapshot:(cb,e)=>fs.onSnapshot(q,cb,e)};
-      }
-      db={
-        collection:(c)=>_C(c),
-        batch:()=>{const b=fs.writeBatch(fi);return{set:(w,d,o)=>b.set(w._r,d,o||{}),update:(w,d)=>b.update(w._r,d),delete:(w)=>b.delete(w._r),commit:()=>b.commit()};},
-        enableNetwork:()=>fs.enableNetwork(fi),
-        disableNetwork:()=>fs.disableNetwork(fi)
-      };
+      // compat script registers 'firestore' component → initializeFirestore returns compat Firestore
+      // which has .collection()/.batch()/.enableNetwork() → use db=fi directly
+      const fi=fs.initializeFirestore(firebase.app(),{},'default');
+      console.log('[PokerLog] fi.collection type:',typeof fi.collection,'constructor:',fi.constructor?.name);
+      db=fi;
       isFirebaseReady=true;
       updateDebugBadge('fb','⚡✓');
       console.log('[PokerLog] Firebase+Firestore ready ✓ (db=default)');
