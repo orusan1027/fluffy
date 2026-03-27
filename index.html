@@ -952,11 +952,30 @@ function saveManualRates(){
 // [PokerLog] Firestore CRUD (Fixed - no localStorage inside)
 // ================================================================
 function saveDoc(col,id,data){
-  if(!currentUser||!isFirebaseReady)return;
+  if(!currentUser){console.warn('[PokerLog] saveDoc skip: no user');return;}
+  if(!isFirebaseReady){console.warn('[PokerLog] saveDoc skip: firebase not ready');return;}
+  console.log('[PokerLog] saveDoc writing:',col,id);
   db.collection('userData').doc(currentUser.uid).collection(col).doc(id)
     .set(data,{merge:true})
-    .then(()=>updateDebugBadge('fs','💾✓'))
-    .catch(e=>{console.error('[PokerLog] saveDoc:',col,e);updateDebugBadge('fs','💾✗');notify('クラウド同期失敗（ローカル保存済）','warn');});
+    .then(()=>{console.log('[PokerLog] saveDoc OK:',col,id);updateDebugBadge('fs','💾✓');})
+    .catch(e=>{console.error('[PokerLog] saveDoc ERR:',col,e.code,e.message);updateDebugBadge('fs','💾✗');notify('クラウド同期失敗: '+e.code,'warn');});
+}
+async function testFirestoreWrite(){
+  if(!currentUser||!isFirebaseReady){
+    console.warn('[PokerLog] testFS skip: ready='+isFirebaseReady+' user='+(currentUser?'yes':'no'));
+    notify('FS診断: Firebase未初期化','err');return;
+  }
+  try{
+    await db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
+      .set({ts:Date.now(),ok:true},{merge:true});
+    console.log('[PokerLog] testFS: WRITE OK ✓');
+    notify('Firestore接続OK ✓ 書き込み成功','info');
+    updateDebugBadge('fs','💾✓');
+  }catch(e){
+    console.error('[PokerLog] testFS ERR:',e.code,e.message);
+    notify('FS書き込み失敗: '+e.code+' / '+e.message,'err');
+    updateDebugBadge('fs','💾✗');
+  }
 }
 function deleteDoc(col,id){
   if(!currentUser||!isFirebaseReady)return;
@@ -1137,6 +1156,8 @@ auth.onAuthStateChanged(async user=>{
     if(navAv)navAv.textContent=(user.displayName||'?').charAt(0).toUpperCase();
     await initUserData();
     fetchRates();
+    // Firestore接続テスト（ログイン直後に実行）
+    setTimeout(testFirestoreWrite,2000);
   }else{
     currentUser=null;updateDebugBadge('auth','👤-');
     document.getElementById('mainApp').style.display='none';
