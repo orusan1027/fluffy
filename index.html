@@ -759,8 +759,10 @@ body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),t
     <div class="backup-row"><span class="backup-label">最終更新</span><span class="backup-val" id="backupLastUpdate">—</span></div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn-sm btn-primary" onclick="exportData()">JSONでエクスポート</button>
+      <button class="btn-sm" onclick="runSyncTest()" id="btnSyncTest">🔄 同期テスト</button>
       <button class="btn-sm btn-danger" onclick="confirmDeleteAccount()">アカウント削除</button>
     </div>
+    <div id="syncTestResult" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:12px;font-family:monospace;white-space:pre-wrap;word-break:break-all"></div>
   </div>
   <div class="section-title">パスワード変更</div>
   <div class="form-card">
@@ -864,7 +866,7 @@ function notify(msg,type='info'){
   el.textContent=msg;
   el.className='notify show'+(type==='err'?' err':type==='warn'?' warn':'');
   clearTimeout(notifyTimer);
-  notifyTimer=setTimeout(()=>el.classList.remove('show'),3500);
+  notifyTimer=setTimeout(()=>el.classList.remove('show'),type==='err'||type==='warn'?10000:4000);
 }
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -987,6 +989,51 @@ async function testFirestoreWrite(){
     notify('FS書き込み失敗: '+e.code+' / '+e.message,'err');
     updateDebugBadge('fs','💾✗');
   }
+}
+async function runSyncTest(){
+  const btn=document.getElementById('btnSyncTest');
+  const res=document.getElementById('syncTestResult');
+  if(!res)return;
+  res.style.display='block';
+  res.style.background='rgba(139,92,246,.1)';
+  res.style.border='1px solid rgba(139,92,246,.3)';
+  res.style.color='#a78bfa';
+  res.textContent='テスト中...';
+  if(btn)btn.disabled=true;
+  const log=[];
+  const addLog=(msg)=>{log.push(msg);res.textContent=log.join('\n');console.log('[PokerLog]',msg);};
+  addLog('Firebase ready: '+isFirebaseReady);
+  addLog('Login: '+(currentUser?currentUser.email:'未ログイン'));
+  if(!currentUser||!isFirebaseReady){
+    res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+    if(btn)btn.disabled=false;return;
+  }
+  // REST API test
+  try{
+    const token=await currentUser.getIdToken(true);
+    addLog('Token取得: OK');
+    const url=`https://firestore.googleapis.com/v1/projects/pro-f6323/databases/(default)/documents`;
+    const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    addLog('REST API: HTTP '+r.status);
+    if(!r.ok){
+      const body=await r.text();addLog('エラー: '+body.slice(0,200));
+      res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+      if(btn)btn.disabled=false;return;
+    }
+  }catch(re){addLog('REST失敗: '+re.message);}
+  // SDK write test
+  try{
+    await db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
+      .set({ts:Date.now(),ok:true,device:navigator.userAgent.slice(0,50)},{merge:true});
+    addLog('書き込み: ✓ 成功');
+    res.style.background='rgba(74,222,128,.1)';res.style.border='1px solid rgba(74,222,128,.3)';res.style.color='var(--green)';
+    updateDebugBadge('fs','💾✓');
+  }catch(e){
+    addLog('書き込み失敗: '+e.code+'\n'+e.message);
+    res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+    updateDebugBadge('fs','💾✗');
+  }
+  if(btn)btn.disabled=false;
 }
 function deleteDoc(col,id){
   if(!currentUser||!isFirebaseReady)return;
