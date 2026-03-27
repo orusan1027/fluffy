@@ -798,9 +798,9 @@ body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),t
 <div id="debugBadge"><span id="dbFb">⚡—</span><span id="dbAuth" style="margin-left:6px">👤—</span><span id="dbFs" style="margin-left:6px">💾—</span></div>
 <div class="notify" id="notify"></div>
 <script>
-// ============================================================
+// ================================================================
 // [PokerLog] Firebase Config & Init
-// ============================================================
+// ================================================================
 const firebaseConfig={
   apiKey:"AIzaSyDbZ025iGTvMo2Gy7SkjLGIAGZzQ_jALtY",
   authDomain:"pro-f6323.firebaseapp.com",
@@ -810,571 +810,453 @@ const firebaseConfig={
   appId:"1:1043235599664:web:381c2a9ed4c97553e484f5",
   measurementId:"G-EZGR97HEBY"
 };
-let isFirebaseReady=false;
-let db,auth,storage;
+let isFirebaseReady=false,db,auth;
 try{
   firebase.initializeApp(firebaseConfig);
   db=firebase.firestore();
   auth=firebase.auth();
   isFirebaseReady=true;
-}catch(e){
-  console.error('[PokerLog] Firebase init failed:',e);
-  isFirebaseReady=false;
-}
+}catch(e){console.error('[PokerLog] Firebase init failed:',e);}
 
-// ============================================================
-// [PokerLog] Constants & Globals
-// ============================================================
-const DEBUG_MODE=new URLSearchParams(location.search).has('debug')||lsGet('debugMode',false);
+// ================================================================
+// [PokerLog] Globals
+// ================================================================
+const DEBUG_MODE=new URLSearchParams(location.search).has('debug');
 let skipAuthStateCheck=false;
-let currentUser=null;
-let isLocalMode=false;
-let localData={};
-let rates={USD:150,EUR:163,GBP:188,CNY:21,KRW:0.11,THB:4.2};
+let currentUser=null,isLocalMode=false;
+let rates={JPY:1,USD:150,EUR:163,GBP:188,PWC:1,PT:1,CNY:21,KRW:0.11,THB:4.2,HKD:19};
 let manualRates={};
-let sessions=[],txs=[],crTxs=[],expenses=[],contracts=[],ciList=[];
-let profile={displayName:'',bio:'',avatar:'',totalBuyIn:0,totalProfit:0};
-let bbsMessages=[],dmChats={},dmPartners=[];
-let rankingData=[];
-let unsubscribes=[];
+let sessions=[],txList_data=[],crTxList_data=[],expList_data=[],contractInfo={};
+let profile={handle:'',displayName:'',bio:'',twitter:''};
+let currentFilter='all',currentTxFilter='all',currentExpFilter='all',currentBbsCat='all';
+let buyinSource='own';
+let activeDmHandle=null,activeDmUid=null;
+let unsubDm=null;
 let notifyTimer=null;
-let chartLine=null,chartPie=null,chartBar=null;
-let currentDMPartner=null;
-let reportTarget=null;
-let editSessionId=null;
-let editTxId=null;
-let editContractId=null;
+let charts={};
 
-// ============================================================
+// ================================================================
 // [PokerLog] Debug Badge
-// ============================================================
+// ================================================================
 function updateDebugBadge(type,val){
   if(!DEBUG_MODE)return;
   const b=document.getElementById('debugBadge');
-  if(!b)return;
-  b.style.display='block';
-  const m={fb:'dbFb',auth:'dbAuth',fs:'dbFs'};
-  const el=document.getElementById(m[type]);
+  if(b)b.style.display='block';
+  const ids={fb:'dbFb',auth:'dbAuth',fs:'dbFs'};
+  const el=document.getElementById(ids[type]);
   if(el)el.textContent=val;
 }
 updateDebugBadge('fb',isFirebaseReady?'⚡✓':'⚡✗');
 
-// ============================================================
+// ================================================================
 // [PokerLog] localStorage helpers
-// ============================================================
-function lsGet(key,def=null){
-  try{const v=localStorage.getItem(key);return v===null?def:JSON.parse(v);}
-  catch{return def;}
-}
-function lsSet(key,val){
-  try{localStorage.setItem(key,JSON.stringify(val));}
-  catch(e){console.warn('[PokerLog] lsSet failed:',key,e);}
-}
-function lsDel(key){try{localStorage.removeItem(key);}catch{}}
+// ================================================================
+function lsGet(k,d=null){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch{return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('[PokerLog] lsSet:',k,e);}}
 
-// ============================================================
+// ================================================================
 // [PokerLog] Notify
-// ============================================================
+// ================================================================
 function notify(msg,type='info'){
   const el=document.getElementById('notify');
   if(!el)return;
   el.textContent=msg;
-  el.className='notify show '+(type==='err'?'err':type==='warn'?'warn':'');
+  el.className='notify show'+(type==='err'?' err':type==='warn'?' warn':'');
   clearTimeout(notifyTimer);
-  notifyTimer=setTimeout(()=>{el.classList.remove('show');},3500);
+  notifyTimer=setTimeout(()=>el.classList.remove('show'),3500);
 }
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-// ============================================================
+// ================================================================
 // [PokerLog] Tab control
-// ============================================================
-function switchTab(tabName){
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const btn=document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
-  const pane=document.getElementById('pane'+capitalize(tabName));
-  if(btn)btn.classList.add('active');
+// ================================================================
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  if(el)el.classList.add('active');
+  else{const b=document.querySelector(`.tab[onclick*="'${name}'"]`);if(b)b.classList.add('active');}
+  const pane=document.getElementById('pane'+name.charAt(0).toUpperCase()+name.slice(1));
   if(pane)pane.classList.add('active');
-  if(tabName==='graph')renderCharts();
-  if(tabName==='ranking')loadRanking();
-  if(tabName==='bbs')renderBBS();
-  if(tabName==='ai')renderAITips();
+  if(name==='graphs')renderCharts();
+  if(name==='rank')loadRanking();
+  if(name==='bbs')loadBbs();
 }
-function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function openAccountTab(){switchTab('account',document.querySelector('.tab[onclick*="account"]'));}
 
-// ============================================================
-// [PokerLog] Auth tab switcher (login/signup)
-// ============================================================
-function switchAuthTab(t){
+// ================================================================
+// [PokerLog] Auth tab
+// ================================================================
+function switchAuthTab(t,el){
   document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.auth-pane').forEach(p=>p.classList.remove('active'));
-  document.querySelector(`.auth-tab[data-tab="${t}"]`).classList.add('active');
-  document.getElementById(t+'Pane').classList.add('active');
+  if(el)el.classList.add('active');
+  document.getElementById('loginForm').style.display=t==='login'?'':'none';
+  document.getElementById('signupForm').style.display=t==='signup'?'':'none';
 }
 
-// ============================================================
+// ================================================================
 // [PokerLog] Exchange rates
-// ============================================================
+// ================================================================
 async function fetchRates(){
+  const statusEl=document.getElementById('rateStatus');
+  if(statusEl)statusEl.textContent='取得中...';
   try{
     const r=await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
-    if(!r.ok)throw new Error('rate fetch failed');
+    if(!r.ok)throw new Error('fetch failed');
     const d=await r.json();
-    const inv=d.rates;
-    ['USD','EUR','GBP','CNY','KRW','THB'].forEach(c=>{
-      if(inv[c])rates[c]=parseFloat((1/inv[c]).toFixed(4));
+    ['USD','EUR','GBP','CNY','KRW','THB','HKD'].forEach(c=>{
+      if(d.rates[c])rates[c]=parseFloat((1/d.rates[c]).toFixed(4));
     });
     Object.assign(rates,manualRates);
-    document.getElementById('rateBar').textContent=
-      `USD¥${rates.USD.toFixed(1)} EUR¥${rates.EUR.toFixed(1)} GBP¥${rates.GBP.toFixed(1)} KRW¥${rates.KRW.toFixed(3)} THB¥${rates.THB.toFixed(2)}`;
+    if(statusEl)statusEl.textContent='取得済';
+    renderRateBar();
   }catch(e){
-    console.warn('[PokerLog] fetchRates failed:',e);
+    console.warn('[PokerLog] fetchRates:',e);
+    if(statusEl)statusEl.textContent='取得失敗';
     Object.assign(rates,manualRates);
+    renderRateBar();
   }
 }
-function convertToJPY(amount,currency){
-  if(currency==='JPY')return amount;
-  return Math.round(amount*(rates[currency]||1));
+function renderRateBar(){
+  const el=document.getElementById('rateItems');
+  if(!el)return;
+  const show=['USD','EUR','GBP','KRW','THB','PWC','PT'];
+  el.innerHTML=show.map(c=>`<span style="font-size:11px;padding:2px 7px;background:rgba(201,168,76,.1);border:1px solid var(--gold-border);border-radius:20px;white-space:nowrap">${c} <b style="color:var(--gold)">¥${rates[c]>=1?rates[c].toFixed(1):rates[c].toFixed(3)}</b></span>`).join('');
+}
+function convertToJPY(v,cur){return Math.round(v*(rates[cur]||1));}
+function openRateEdit(){
+  const container=document.getElementById('rateEditFields');
+  if(!container)return;
+  const currencies=['USD','EUR','GBP','CNY','KRW','THB','HKD','PWC','PT'];
+  container.innerHTML=currencies.map(c=>`
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="width:50px;font-size:13px;color:var(--text2)">${c}</label>
+      <input type="number" id="rate_${c}" value="${rates[c]||''}" placeholder="${c}あたりのJPY" style="flex:1">
+    </div>`).join('');
+  document.getElementById('rateModal').classList.add('open');
+}
+function saveManualRates(){
+  ['USD','EUR','GBP','CNY','KRW','THB','HKD','PWC','PT'].forEach(c=>{
+    const v=parseFloat(document.getElementById('rate_'+c)?.value);
+    if(v>0){manualRates[c]=v;rates[c]=v;}
+  });
+  lsSet('manualRates',manualRates);
+  document.getElementById('rateModal').classList.remove('open');
+  renderRateBar();
+  notify('レートを更新しました');
 }
 
-// ============================================================
-// [PokerLog] Firestore CRUD — Fixed (Group A)
-// ============================================================
+// ================================================================
+// [PokerLog] Firestore CRUD (Fixed - no localStorage inside)
+// ================================================================
 function saveDoc(col,id,data){
-  // localStorage は呼び出し元で管理。saveDoc はFirestoreのみ担当
   if(!currentUser||!isFirebaseReady)return;
-  const uid=currentUser.uid;
-  db.collection('userData').doc(uid).collection(col).doc(id)
+  db.collection('userData').doc(currentUser.uid).collection(col).doc(id)
     .set(data,{merge:true})
     .then(()=>updateDebugBadge('fs','💾✓'))
-    .catch(e=>{
-      console.error('[PokerLog] Firestore save failed:',col,id,e);
-      updateDebugBadge('fs','💾✗');
-      notify('クラウド同期に失敗しました（ローカル保存済）','warn');
-    });
+    .catch(e=>{console.error('[PokerLog] saveDoc:',col,e);updateDebugBadge('fs','💾✗');notify('クラウド同期失敗（ローカル保存済）','warn');});
 }
-
 function deleteDoc(col,id){
-  // localStorage は呼び出し元で管理。deleteDoc はFirestoreのみ担当
   if(!currentUser||!isFirebaseReady)return;
-  const uid=currentUser.uid;
-  db.collection('userData').doc(uid).collection(col).doc(id)
+  db.collection('userData').doc(currentUser.uid).collection(col).doc(id)
     .delete()
     .then(()=>updateDebugBadge('fs','💾✓'))
-    .catch(e=>{
-      console.error('[PokerLog] Firestore delete failed:',col,id,e);
-      updateDebugBadge('fs','💾✗');
-      notify('クラウド削除に失敗しました','warn');
-    });
+    .catch(e=>{console.error('[PokerLog] deleteDoc:',col,e);updateDebugBadge('fs','💾✗');});
 }
 
-// ============================================================
-// [PokerLog] Local Mode init — Fixed keys (Group A-3)
-// ============================================================
-function initLocalMode(){
-  isLocalMode=true;
-  // local_* キーで統一（demo_* ではなく local_* を使用）
-  sessions=lsGet('local_sessions',[]);
-  txs=lsGet('local_txs',[]);
-  crTxs=lsGet('local_crTxs',[]);
-  expenses=lsGet('local_expenses',[]);
-  contracts=lsGet('local_ci',[]);
-  profile=lsGet('local_profile',{displayName:'ゲスト',bio:'',avatar:'',totalBuyIn:0,totalProfit:0});
-  renderAll();
-}
-
-// ============================================================
-// [PokerLog] Firestore fetch & sync
-// ============================================================
+// ================================================================
+// [PokerLog] Data fetch from Firestore
+// ================================================================
 async function fetchFromFirestore(){
   if(!currentUser||!isFirebaseReady)return;
   const uid=currentUser.uid;
   try{
-    const [sSnap,tSnap,crSnap,exSnap,ciSnap,profSnap]=await Promise.all([
+    const [sSnap,tSnap,crSnap,exSnap,profSnap,ciSnap]=await Promise.all([
       db.collection('userData').doc(uid).collection('sessions').orderBy('date','desc').get(),
       db.collection('userData').doc(uid).collection('txs').orderBy('date','desc').get(),
       db.collection('userData').doc(uid).collection('crTxs').orderBy('date','desc').get(),
       db.collection('userData').doc(uid).collection('expenses').orderBy('date','desc').get(),
-      db.collection('userData').doc(uid).collection('contracts').get(),
-      db.collection('users').doc(uid).get()
+      db.collection('users').doc(uid).get(),
+      db.collection('userData').doc(uid).collection('contractInfo').doc('main').get()
     ]);
     sessions=sSnap.docs.map(d=>({id:d.id,...d.data()}));
-    txs=tSnap.docs.map(d=>({id:d.id,...d.data()}));
-    crTxs=crSnap.docs.map(d=>({id:d.id,...d.data()}));
-    expenses=exSnap.docs.map(d=>({id:d.id,...d.data()}));
-    contracts=ciSnap.docs.map(d=>({id:d.id,...d.data()}));
-    if(profSnap.exists){
-      const pd=profSnap.data();
-      profile={
-        displayName:pd.displayName||currentUser.displayName||'',
-        bio:pd.bio||'',
-        avatar:pd.avatar||'',
-        totalBuyIn:pd.totalBuyIn||0,
-        totalProfit:pd.totalProfit||0
-      };
-    }
-    // キャッシュ更新
-    lsSet('local_sessions',sessions);
-    lsSet('local_txs',txs);
-    lsSet('local_crTxs',crTxs);
-    lsSet('local_expenses',expenses);
-    lsSet('local_ci',contracts);
-    lsSet('local_profile',profile);
+    txList_data=tSnap.docs.map(d=>({id:d.id,...d.data()}));
+    crTxList_data=crSnap.docs.map(d=>({id:d.id,...d.data()}));
+    expList_data=exSnap.docs.map(d=>({id:d.id,...d.data()}));
+    if(profSnap.exists){const pd=profSnap.data();profile={handle:pd.handle||'',displayName:pd.displayName||'',bio:pd.bio||'',twitter:pd.twitter||''};}
+    if(ciSnap.exists)contractInfo=ciSnap.data()||{};
+    lsSet('local_sessions',sessions);lsSet('local_txs',txList_data);
+    lsSet('local_crTxs',crTxList_data);lsSet('local_expenses',expList_data);
+    lsSet('local_profile',profile);lsSet('local_ci',contractInfo);
     renderAll();
-    console.log('[PokerLog] Firestore sync complete');
   }catch(e){
-    console.error('[PokerLog] fetchFromFirestore failed:',e);
-    // フォールバック: localStorage から読み込み
-    sessions=lsGet('local_sessions',[]);
-    txs=lsGet('local_txs',[]);
-    crTxs=lsGet('local_crTxs',[]);
-    expenses=lsGet('local_expenses',[]);
-    contracts=lsGet('local_ci',[]);
-    profile=lsGet('local_profile',{displayName:currentUser.displayName||'',bio:'',avatar:''});
+    console.error('[PokerLog] fetchFromFirestore:',e);
+    sessions=lsGet('local_sessions',[]);txList_data=lsGet('local_txs',[]);
+    crTxList_data=lsGet('local_crTxs',[]);expList_data=lsGet('local_expenses',[]);
+    profile=lsGet('local_profile',{handle:'',displayName:'',bio:'',twitter:''});
+    contractInfo=lsGet('local_ci',{});
     renderAll();
   }
 }
-
 async function initUserData(){
-  console.log('[PokerLog] initUserData start');
-  if(!currentUser)return;
-  // まずキャッシュで即表示
-  sessions=lsGet('local_sessions',[]);
-  txs=lsGet('local_txs',[]);
-  crTxs=lsGet('local_crTxs',[]);
-  expenses=lsGet('local_expenses',[]);
-  contracts=lsGet('local_ci',[]);
-  profile=lsGet('local_profile',{displayName:currentUser.displayName||'',bio:'',avatar:''});
+  sessions=lsGet('local_sessions',[]);txList_data=lsGet('local_txs',[]);
+  crTxList_data=lsGet('local_crTxs',[]);expList_data=lsGet('local_expenses',[]);
+  profile=lsGet('local_profile',{handle:'',displayName:currentUser?.displayName||'',bio:'',twitter:''});
+  contractInfo=lsGet('local_ci',{});
   renderAll();
-  // Firestore から最新データ取得
   await fetchFromFirestore();
 }
 
-// ============================================================
-// [PokerLog] Auth — Group B: emailSignup (full rewrite)
-// ============================================================
+// ================================================================
+// [PokerLog] Auth — emailSignup (fixed)
+// ================================================================
 async function emailSignup(){
-  const displayName=document.getElementById('signupName').value.trim();
+  const name=document.getElementById('signupName').value.trim();
   const email=document.getElementById('signupEmail').value.trim();
   const pass=document.getElementById('signupPass').value;
   const errEl=document.getElementById('signupErr');
   const successEl=document.getElementById('signupSuccess');
-  const btn=document.querySelector('#signupPane .btn-add');
-
-  errEl.style.display='none';
-  successEl.style.display='none';
-
-  if(!displayName){errEl.textContent='表示名を入力してください';errEl.style.display='block';return;}
+  const btn=document.getElementById('btnSignup');
+  errEl.style.display='none';successEl.style.display='none';
+  if(!name){errEl.textContent='表示名を入力してください';errEl.style.display='block';return;}
   if(!email){errEl.textContent='メールアドレスを入力してください';errEl.style.display='block';return;}
-  if(pass.length<6){errEl.textContent='パスワードは6文字以上で入力してください';errEl.style.display='block';return;}
-
-  // ボタン無効化
-  btn.disabled=true;
-  const origText=btn.textContent;
-  btn.textContent='登録中...';
-
-  let user=null;
-  let firestoreSaved=false;
+  if(pass.length<6){errEl.textContent='パスワードは6文字以上';errEl.style.display='block';return;}
+  btn.disabled=true;btn.textContent='登録中...';
+  let user=null,fsSaved=false;
   try{
-    // 1. ユーザー作成
     const cred=await auth.createUserWithEmailAndPassword(email,pass);
     user=cred.user;
-
-    // 2. 表示名更新
-    await user.updateProfile({displayName});
-
-    // 3. Firestore にプロフィール保存
-    await db.collection('users').doc(user.uid).set({
-      displayName,
-      email:user.email,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-      totalBuyIn:0,
-      totalProfit:0,
-      bio:'',
-      avatar:''
-    });
-    firestoreSaved=true;
-
-    // 4. 確認メール送信（失敗しても続行）
-    try{
-      await user.sendEmailVerification();
-      console.log('[PokerLog] Verification email sent to:',email);
-    }catch(vErr){
-      console.warn('[PokerLog] sendEmailVerification failed:',vErr);
-    }
-
-    // 5. サインアウト（未確認のままアプリに入れない）
+    await user.updateProfile({displayName:name});
+    await db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    fsSaved=true;
+    try{await user.sendEmailVerification();}catch(ve){console.warn('[PokerLog] sendEmailVerification:',ve);}
     await auth.signOut();
-
-    // 6. 成功メッセージ表示
     successEl.textContent=`確認メールを ${email} に送信しました。メール内のリンクをクリックして認証を完了してください。`;
     successEl.style.display='block';
-
-    // 7. フォームクリア
     document.getElementById('signupName').value='';
     document.getElementById('signupEmail').value='';
     document.getElementById('signupPass').value='';
-
-    // 8. 3秒後にログインタブへ
-    setTimeout(()=>switchAuthTab('login'),3000);
-
+    setTimeout(()=>switchAuthTab('login',document.querySelector('.auth-tab')),3000);
   }catch(e){
-    console.error('[PokerLog] emailSignup failed:',e);
-    // ロールバック: Firestoreに保存できていない場合はAuthユーザーを削除
-    if(user&&!firestoreSaved){
-      try{await user.delete();}
-      catch(delErr){console.warn('[PokerLog] rollback delete failed:',delErr);}
-    }
-    const msgs={
-      'auth/email-already-in-use':'このメールアドレスはすでに登録されています',
-      'auth/invalid-email':'メールアドレスの形式が正しくありません',
-      'auth/weak-password':'パスワードが弱すぎます（6文字以上）',
-      'auth/network-request-failed':'通信エラーが発生しました。接続を確認してください',
-      'auth/too-many-requests':'リクエストが多すぎます。しばらく経ってから再試行してください'
-    };
-    errEl.textContent=msgs[e.code]||`エラー: ${e.message}`;
-    errEl.style.display='block';
-  }finally{
-    btn.disabled=false;
-    btn.textContent=origText;
-  }
+    if(user&&!fsSaved){try{await user.delete();}catch{}}
+    const msgs={'auth/email-already-in-use':'このメールアドレスはすでに登録済みです','auth/invalid-email':'メールアドレスの形式が正しくありません','auth/weak-password':'パスワードが弱すぎます（6文字以上）','auth/network-request-failed':'通信エラー','auth/too-many-requests':'しばらく経ってから再試行してください'};
+    errEl.textContent=msgs[e.code]||e.message;errEl.style.display='block';
+  }finally{btn.disabled=false;btn.textContent='アカウント作成';}
 }
 
-// ============================================================
-// [PokerLog] Auth — Group C: emailLogin (reload + emailVerified)
-// ============================================================
+// ================================================================
+// [PokerLog] Auth — emailLogin (fixed)
+// ================================================================
 async function emailLogin(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
   const errEl=document.getElementById('loginErr');
-  const btn=document.querySelector('#loginPane .btn-add');
-
+  const btn=document.getElementById('btnLogin');
   errEl.style.display='none';
-
   if(!email||!pass){errEl.textContent='メールアドレスとパスワードを入力してください';errEl.style.display='block';return;}
-
-  btn.disabled=true;
-  const origText=btn.textContent;
-  btn.textContent='ログイン中...';
-
+  btn.disabled=true;btn.textContent='ログイン中...';
   try{
     const cred=await auth.signInWithEmailAndPassword(email,pass);
-    const user=cred.user;
-
-    // 最新の emailVerified 状態を取得（キャッシュではなく実際の値）
-    await user.reload();
-
-    if(!user.emailVerified){
+    await cred.user.reload();
+    if(!cred.user.emailVerified){
       await auth.signOut();
-      errEl.innerHTML=`メールアドレスの確認が完了していません。<br>受信トレイの確認メールをご確認ください。<br>
-        <button class="btn-sm" style="margin-top:8px" onclick="resendVerification()">確認メールを再送する</button>`;
+      errEl.innerHTML='メールアドレスの確認が完了していません。<br>受信トレイをご確認ください。<br><button class="btn-sm" style="margin-top:8px" onclick="resendVerification()">確認メールを再送する</button>';
       errEl.style.display='block';
       return;
     }
-    // verified → onAuthStateChanged が発火してアプリへ遷移
   }catch(e){
-    console.error('[PokerLog] emailLogin failed:',e);
-    const msgs={
-      'auth/user-not-found':'このメールアドレスは登録されていません',
-      'auth/wrong-password':'パスワードが正しくありません',
-      'auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません',
-      'auth/invalid-email':'メールアドレスの形式が正しくありません',
-      'auth/user-disabled':'このアカウントは無効化されています',
-      'auth/too-many-requests':'ログイン試行が多すぎます。しばらく経ってから再試行してください',
-      'auth/network-request-failed':'通信エラーが発生しました'
-    };
-    errEl.textContent=msgs[e.code]||`エラー: ${e.message}`;
-    errEl.style.display='block';
-  }finally{
-    btn.disabled=false;
-    btn.textContent=origText;
-  }
+    const msgs={'auth/user-not-found':'このメールアドレスは登録されていません','auth/wrong-password':'パスワードが正しくありません','auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません','auth/invalid-email':'メールアドレスの形式が正しくありません','auth/user-disabled':'このアカウントは無効化されています','auth/too-many-requests':'しばらく経ってから再試行してください','auth/network-request-failed':'通信エラー'};
+    errEl.textContent=msgs[e.code]||e.message;errEl.style.display='block';
+  }finally{btn.disabled=false;btn.textContent='ログイン';}
 }
 
-// ============================================================
-// [PokerLog] Auth — Group J: googleLogin (emailVerified check)
-// ============================================================
+// ================================================================
+// [PokerLog] Auth — Google login
+// ================================================================
 async function googleLogin(){
   const provider=new firebase.auth.GoogleAuthProvider();
   try{
     const cred=await auth.signInWithPopup(provider);
-    if(!cred.user.emailVerified){
-      await auth.signOut();
-      notify('アカウントの認証が完了していません','err');
-      return;
-    }
-    // onAuthStateChanged が処理
-  }catch(e){
-    console.error('[PokerLog] googleLogin failed:',e);
-    if(e.code!=='auth/popup-closed-by-user'){
-      notify('Googleログインに失敗しました','err');
-    }
-  }
+    if(!cred.user.emailVerified){await auth.signOut();notify('アカウント認証が完了していません','err');}
+  }catch(e){if(e.code!=='auth/popup-closed-by-user')notify('Googleログイン失敗','err');}
 }
 
-// ============================================================
-// [PokerLog] Auth — Group E: resendVerification
-// ============================================================
+// ================================================================
+// [PokerLog] Auth — resendVerification
+// ================================================================
 async function resendVerification(){
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPass').value;
   const errEl=document.getElementById('loginErr');
-  if(!email||!pass){
-    errEl.textContent='メールアドレスとパスワードを入力して再送してください';
-    errEl.style.display='block';
-    return;
-  }
+  if(!email||!pass){errEl.textContent='メールとパスワードを入力してください';errEl.style.display='block';return;}
   skipAuthStateCheck=true;
   try{
     const cred=await auth.signInWithEmailAndPassword(email,pass);
-    const user=cred.user;
-    await user.reload();
-    if(user.emailVerified){
-      await auth.signOut();
-      errEl.style.color='var(--green)';
-      errEl.textContent='このアカウントはすでに認証済みです。ログインしてください。';
-      errEl.style.display='block';
-      return;
-    }
-    await user.sendEmailVerification();
+    await cred.user.reload();
+    if(cred.user.emailVerified){await auth.signOut();errEl.style.color='var(--green)';errEl.textContent='このアカウントはすでに認証済みです。ログインしてください。';errEl.style.display='block';return;}
+    await cred.user.sendEmailVerification();
     await auth.signOut();
-    errEl.style.color='var(--green)';
-    errEl.textContent=`確認メールを ${email} に再送しました。受信トレイをご確認ください。`;
-    errEl.style.display='block';
-  }catch(e){
-    console.error('[PokerLog] resendVerification failed:',e);
-    const msgs={
-      'auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません',
-      'auth/too-many-requests':'リクエストが多すぎます。しばらく経ってから再試行してください'
-    };
-    errEl.style.color='';
-    errEl.textContent=msgs[e.code]||`エラー: ${e.message}`;
-    errEl.style.display='block';
-  }finally{
-    skipAuthStateCheck=false;
-  }
+    errEl.style.color='var(--green)';errEl.textContent=`確認メールを ${email} に再送しました。`;errEl.style.display='block';
+  }catch(e){errEl.style.color='';errEl.textContent=e.message;errEl.style.display='block';}
+  finally{skipAuthStateCheck=false;}
 }
 
-// ============================================================
-// [PokerLog] Logout
-// ============================================================
-function logout(){
-  if(!confirm('ログアウトしますか？'))return;
-  unsubscribes.forEach(u=>u());
-  unsubscribes=[];
-  if(isFirebaseReady)auth.signOut().catch(e=>console.warn('[PokerLog] signOut error:',e));
-  currentUser=null;
-  isLocalMode=false;
-  sessions=[];txs=[];crTxs=[];expenses=[];contracts=[];
-  document.getElementById('mainApp').style.display='none';
-  document.getElementById('authScreen').style.display='flex';
+// ================================================================
+// [PokerLog] Auth — resetPassword
+// ================================================================
+async function resetPassword(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const errEl=document.getElementById('loginErr');
+  if(!email){errEl.textContent='メールアドレスを入力してください';errEl.style.display='block';return;}
+  try{
+    await auth.sendPasswordResetEmail(email);
+    errEl.style.color='var(--green)';errEl.textContent=`パスワードリセットメールを ${email} に送信しました`;errEl.style.display='block';
+  }catch(e){errEl.style.color='';errEl.textContent=e.message;errEl.style.display='block';}
 }
 
-// ============================================================
-// [PokerLog] Auth — Group D: onAuthStateChanged (emailVerified block)
-// ============================================================
+// ================================================================
+// [PokerLog] Auth — onAuthStateChanged (fixed)
+// ================================================================
 auth.onAuthStateChanged(async user=>{
+  if(skipAuthStateCheck)return;
   if(user){
-    if(skipAuthStateCheck)return;
-    try{
-      await user.reload();
-    }catch(e){
-      console.warn('[PokerLog] user.reload() failed:',e);
-    }
-    if(!user.emailVerified){
-      console.warn('[PokerLog] Unverified user blocked:',user.email);
-      await auth.signOut();
-      updateDebugBadge('auth','👤✗');
-      return;
-    }
+    try{await user.reload();}catch{}
+    if(!user.emailVerified){await auth.signOut();updateDebugBadge('auth','👤✗');return;}
     currentUser=user;
     updateDebugBadge('auth','👤✓');
     document.getElementById('authScreen').style.display='none';
     document.getElementById('mainApp').style.display='block';
-    document.getElementById('topUserName').textContent=user.displayName||user.email||'ユーザー';
+    const navName=document.getElementById('navName');
+    if(navName)navName.textContent=user.displayName||user.email||'ユーザー';
+    const navAv=document.getElementById('navAvatar');
+    if(navAv)navAv.textContent=(user.displayName||'?').charAt(0).toUpperCase();
     await initUserData();
     fetchRates();
   }else{
-    currentUser=null;
-    updateDebugBadge('auth','👤-');
+    currentUser=null;updateDebugBadge('auth','👤-');
     document.getElementById('mainApp').style.display='none';
     document.getElementById('authScreen').style.display='flex';
   }
 });
 
-// ============================================================
-// [PokerLog] Group I: Page Visibility API (multi-device sync)
-// ============================================================
-document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden&&currentUser){
-    fetchFromFirestore();
-  }
-});
+// ================================================================
+// [PokerLog] Page Visibility sync
+// ================================================================
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentUser)fetchFromFirestore();});
 
-// ============================================================
-// [PokerLog] Sessions
-// ============================================================
+// ================================================================
+// [PokerLog] Logout
+// ================================================================
+function logout(){
+  if(!confirm('ログアウトしますか？'))return;
+  if(unsubDm){unsubDm();unsubDm=null;}
+  auth.signOut().catch(()=>{});
+  currentUser=null;sessions=[];txList_data=[];crTxList_data=[];expList_data=[];
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+}
+
+// ================================================================
+// [PokerLog] Session form
+// ================================================================
+function updatePreview(){
+  const buyin=parseFloat(document.getElementById('fBuyin')?.value)||0;
+  const cashout=parseFloat(document.getElementById('fCashout')?.value)||0;
+  const cur=document.getElementById('fCurrency')?.value||'JPY';
+  const profit=cashout-buyin;
+  const profitJPY=convertToJPY(profit,cur);
+  const valEl=document.getElementById('pnlPreviewVal');
+  const jpyEl=document.getElementById('pnlPreviewJpy');
+  if(!valEl)return;
+  const sym=cur==='JPY'?'¥':`${cur} `;
+  const sign=profit>=0?'+':'';
+  valEl.textContent=`${sign}${sym}${Math.abs(profit).toLocaleString()}`;
+  valEl.style.color=profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)';
+  if(jpyEl&&cur!=='JPY')jpyEl.textContent=` (≈ ${sign}¥${Math.abs(profitJPY).toLocaleString()})`;
+  else if(jpyEl)jpyEl.textContent='';
+}
+
+function onCurrencyChange(){
+  updatePreview();
+  const cur=document.getElementById('fCurrency')?.value||'JPY';
+  const heroCur=document.getElementById('heroCur');
+  if(heroCur)heroCur.textContent=cur;
+}
+
+function setBuyinSource(type,el){
+  buyinSource=type;
+  document.querySelectorAll('.source-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const detail=document.getElementById('buyinSourceDetail');
+  const balLink=document.getElementById('balanceLink');
+  if(type==='own'){if(detail)detail.textContent='';if(balLink)balLink.style.display='none';}
+  else if(type==='contract'){if(detail)detail.textContent='バイイン額が契約残高から自動差し引きされます';if(balLink)balLink.style.display='none';}
+  else if(type==='pwc'){if(detail)detail.textContent='PWC残高からバイイン額が差し引きされます';if(balLink){balLink.style.display='';const bd=document.getElementById('balLinkDetail');if(bd)bd.textContent='PWC残高と自動連動します';}}
+  else if(type==='pt'){if(detail)detail.textContent='PT残高からバイイン額が差し引きされます';if(balLink){balLink.style.display='';const bd=document.getElementById('balLinkDetail');if(bd)bd.textContent='PT残高と自動連動します';}}
+}
+
+function toggleExpenseLink(){
+  const cb=document.getElementById('fAddExpense');
+  const fields=document.getElementById('expenseLinkFields');
+  if(fields)fields.style.display=cb?.checked?'':'none';
+}
+
 function addSession(){
-  const date=document.getElementById('sesDate').value||new Date().toISOString().slice(0,10);
-  const casino=document.getElementById('sesCasino').value.trim()||'不明';
-  const game=document.getElementById('sesGame').value||'NLH';
-  const stakes=document.getElementById('sesStakes').value.trim()||'—';
-  const currency=document.getElementById('sesCurrency').value||'JPY';
-  const buyIn=parseFloat(document.getElementById('sesBuyIn').value)||0;
-  const cashOut=parseFloat(document.getElementById('sesCashOut').value)||0;
-  const hours=parseFloat(document.getElementById('sesHours').value)||0;
-  const memo=document.getElementById('sesMemo').value.trim();
-  const profit=cashOut-buyIn;
-  const profitJPY=convertToJPY(profit,currency);
-  const buyInJPY=convertToJPY(buyIn,currency);
+  const date=document.getElementById('fDate')?.value||new Date().toISOString().slice(0,10);
+  const cur=document.getElementById('fCurrency')?.value||'JPY';
+  const game=document.getElementById('fGame')?.value||'No Limit Hold\'em';
+  const tournament=document.getElementById('fTournament')?.value?.trim()||'';
+  const buyin=parseFloat(document.getElementById('fBuyin')?.value)||0;
+  const cashout=parseFloat(document.getElementById('fCashout')?.value)||0;
+  const hours=parseFloat(document.getElementById('fHours')?.value)||0;
+  const venue=document.getElementById('fVenue')?.value?.trim()||'';
+  const note=document.getElementById('fNote')?.value?.trim()||'';
+  const profit=cashout-buyin;
+  const profitJPY=convertToJPY(profit,cur);
+  const buyinJPY=convertToJPY(buyin,cur);
+  const id=Date.now().toString();
+  const data={id,date,cur,game,tournament,buyin,cashout,hours,venue,note,profit,profitJPY,buyinJPY,source:buyinSource,updatedAt:Date.now()};
 
-  const id=editSessionId||Date.now().toString();
-  const data={id,date,casino,game,stakes,currency,buyIn,cashOut,hours,memo,profit,profitJPY,buyInJPY,updatedAt:Date.now()};
-
-  if(editSessionId){
-    const idx=sessions.findIndex(s=>s.id===editSessionId);
-    if(idx>=0)sessions[idx]=data;
-    editSessionId=null;
-  }else{
-    sessions.unshift(data);
+  // 連動: 経費追加
+  if(document.getElementById('fAddExpense')?.checked){
+    const entrance=parseFloat(document.getElementById('fEntranceFee')?.value)||0;
+    const drink=parseFloat(document.getElementById('fDrinkFee')?.value)||0;
+    const drinkQty=parseInt(document.getElementById('fDrinkQty')?.value)||0;
+    const other=parseFloat(document.getElementById('fOtherFee')?.value)||0;
+    if(entrance>0){const eid=id+'_e1';const ed={id:eid,date,type:'entrance',amount:entrance,venue,memo:'セッション連動',auto:true,updatedAt:Date.now()};expList_data.unshift(ed);lsSet('local_expenses',expList_data);saveDoc('expenses',eid,ed);}
+    if(drink>0){const eid=id+'_e2';const ed={id:eid,date,type:'drink',amount:drink*drinkQty||drink,venue,memo:`ドリンク×${drinkQty||1}`,auto:true,updatedAt:Date.now()};expList_data.unshift(ed);lsSet('local_expenses',expList_data);saveDoc('expenses',eid,ed);}
+    if(other>0){const eid=id+'_e3';const ed={id:eid,date,type:'other',amount:other,venue,memo:'その他',auto:true,updatedAt:Date.now()};expList_data.unshift(ed);lsSet('local_expenses',expList_data);saveDoc('expenses',eid,ed);}
+  }
+  // 連動: PWC/PT差し引き
+  if(buyinSource==='pwc'||buyinSource==='pt'){
+    const txCur=buyinSource.toUpperCase();
+    const tid=id+'_t';
+    const td={id:tid,date,currency:txCur,type:'used',amount:buyin,memo:`セッション連動: ${venue||game}`,auto:true,updatedAt:Date.now()};
+    txList_data.unshift(td);lsSet('local_txs',txList_data);saveDoc('txs',tid,td);
+  }
+  // 連動: 契約差し引き
+  if(buyinSource==='contract'){
+    const crid=id+'_cr';
+    const crd={id:crid,date,type:'used',amount:buyinJPY,memo:`セッション連動: ${venue||game}`,auto:true,updatedAt:Date.now()};
+    crTxList_data.unshift(crd);lsSet('local_crTxs',crTxList_data);saveDoc('crTxs',crid,crd);
   }
 
-  // localStorage 先に保存（即時反映）
+  sessions.unshift(data);
   lsSet('local_sessions',sessions);
-  // Firestore に非同期保存（localStorage 操作なし）
   saveDoc('sessions',id,data);
 
-  clearSessionForm();
-  renderSessions();
-  renderStats();
-  notify('セッションを保存しました');
-}
+  // フォームクリア
+  ['fDate','fTournament','fBuyin','fCashout','fHours','fVenue','fNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('fEntranceFee')&&(document.getElementById('fEntranceFee').value='');
+  document.getElementById('fDrinkFee')&&(document.getElementById('fDrinkFee').value='');
+  document.getElementById('fDrinkQty')&&(document.getElementById('fDrinkQty').value='');
+  document.getElementById('fOtherFee')&&(document.getElementById('fOtherFee').value='');
+  document.getElementById('fAddExpense')&&(document.getElementById('fAddExpense').checked=false);
+  document.getElementById('expenseLinkFields')&&(document.getElementById('expenseLinkFields').style.display='none');
+  if(document.getElementById('pnlPreviewVal'))document.getElementById('pnlPreviewVal').textContent='';
+  setBuyinSource('own',document.querySelector('.source-btn'));
 
-function clearSessionForm(){
-  ['sesDate','sesCasino','sesGame','sesStakes','sesCurrency','sesBuyIn','sesCashOut','sesHours','sesMemo'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el)el.value='';
-  });
-  editSessionId=null;
-  const btn=document.querySelector('#paneSession .btn-add');
-  if(btn)btn.textContent='セッションを追加';
-}
-
-function editSession(id){
-  const s=sessions.find(x=>x.id===id);
-  if(!s)return;
-  editSessionId=id;
-  document.getElementById('sesDate').value=s.date||'';
-  document.getElementById('sesCasino').value=s.casino||'';
-  document.getElementById('sesGame').value=s.game||'NLH';
-  document.getElementById('sesStakes').value=s.stakes||'';
-  document.getElementById('sesCurrency').value=s.currency||'JPY';
-  document.getElementById('sesBuyIn').value=s.buyIn||0;
-  document.getElementById('sesCashOut').value=s.cashOut||0;
-  document.getElementById('sesHours').value=s.hours||0;
-  document.getElementById('sesMemo').value=s.memo||'';
-  const btn=document.querySelector('#paneSession .btn-add');
-  if(btn)btn.textContent='セッションを更新';
-  document.getElementById('sesDate').scrollIntoView({behavior:'smooth'});
+  renderSessions();renderStats();renderBalance();renderCost();
+  notify('セッションを記録しました');
 }
 
 function deleteSession(id){
@@ -1382,928 +1264,629 @@ function deleteSession(id){
   sessions=sessions.filter(s=>s.id!==id);
   lsSet('local_sessions',sessions);
   deleteDoc('sessions',id);
-  renderSessions();
-  renderStats();
+  renderSessions();renderStats();renderBalance();renderCost();
   notify('削除しました');
+}
+
+// ================================================================
+// [PokerLog] Session filter & render
+// ================================================================
+function setFilter(type,el){
+  currentFilter=type;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderSessions();
 }
 
 function renderSessions(){
-  const list=document.getElementById('sessionList');
+  const histSection=document.getElementById('histSection');
+  const list=document.getElementById('sessionsList');
   if(!list)return;
-  if(!sessions.length){
-    list.innerHTML='<div style="text-align:center;color:var(--text3);padding:2rem;font-size:13px">セッションがありません</div>';
-    return;
-  }
-  list.innerHTML=sessions.slice(0,50).map(s=>{
-    const p=s.profit||0;
-    const cls=p>=0?'profit':'loss';
-    const sign=p>=0?'+':'';
-    const sym=s.currency==='JPY'?'¥':s.currency;
+  let data=[...sessions];
+  if(currentFilter==='win')data=data.filter(s=>s.profit>0);
+  else if(currentFilter==='loss')data=data.filter(s=>s.profit<0);
+  else if(currentFilter==='tourn')data=data.filter(s=>s.tournament);
+  else if(currentFilter==='linked')data=data.filter(s=>s.source&&s.source!=='own');
+  if(histSection)histSection.style.display=sessions.length?'':'none';
+  if(!data.length){list.innerHTML='<div class="empty">該当セッションがありません</div>';return;}
+  list.innerHTML=data.slice(0,60).map(s=>{
+    const sym=s.cur==='JPY'?'¥':`${s.cur} `;
+    const sign=s.profit>=0?'+':'';
+    const cls=s.profit>0?'pos':s.profit<0?'neg':'';
+    const jpyNote=(s.cur!=='JPY'&&s.profitJPY!=null)?`<span style="font-size:10px;color:var(--text3)"> (≈ ${s.profit>=0?'+':''}¥${Math.abs(s.profitJPY).toLocaleString()})</span>`:'';
     return `<div class="item-row">
       <div class="item-info">
-        <div class="item-title">${s.casino} <span style="font-size:11px;color:var(--text3)">${s.game} ${s.stakes}</span></div>
-        <div class="item-sub">${s.date} ${s.hours?`/ ${s.hours}h`:''}${s.memo?` / ${s.memo}`:''}</div>
+        <div class="item-title">${escHtml(s.venue||s.game||'—')} <span style="font-size:11px;color:var(--text3)">${escHtml(s.game)}</span></div>
+        <div class="item-sub">${s.date}${s.hours?` / ${s.hours}h`:''} ${s.tournament?`/ ${escHtml(s.tournament)}`:''}${s.note?` / ${escHtml(s.note)}`:''}</div>
       </div>
       <div class="item-right">
-        <div class="item-amount ${cls}">${sign}${sym}${Math.abs(p).toLocaleString()}</div>
-        <div style="display:flex;gap:4px;margin-top:4px">
-          <button class="btn-sm" onclick="editSession('${s.id}')">編集</button>
-          <button class="btn-sm btn-danger" onclick="deleteSession('${s.id}')">削除</button>
-        </div>
+        <div class="item-amount ${cls}">${sign}${sym}${Math.abs(s.profit).toLocaleString()}${jpyNote}</div>
+        <button class="btn-sm btn-danger" style="margin-top:4px;font-size:10px" onclick="deleteSession('${s.id}')">削除</button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ============================================================
+// ================================================================
 // [PokerLog] Stats
-// ============================================================
+// ================================================================
 function renderStats(){
-  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY||s.profit||0),0);
-  const totalBuyIn=sessions.reduce((a,s)=>a+(s.buyInJPY||s.buyIn||0),0);
-  const totalHours=sessions.reduce((a,s)=>a+(s.hours||0),0);
-  const wins=sessions.filter(s=>s.profit>0).length;
-  const losses=sessions.filter(s=>s.profit<0).length;
-  const winRate=sessions.length?Math.round(wins/sessions.length*100):0;
-  const roi=totalBuyIn?((totalProfit/totalBuyIn)*100).toFixed(1):0;
-  const hourly=totalHours?(totalProfit/totalHours).toFixed(0):0;
-
-  setText('statProfit',(totalProfit>=0?'+':'')+`¥${totalProfit.toLocaleString()}`);
-  setText('statBuyIn',`¥${totalBuyIn.toLocaleString()}`);
-  setText('statSessions',sessions.length);
-  setText('statHours',`${totalHours.toFixed(1)}h`);
-  setText('statWinRate',`${winRate}%`);
-  setText('statROI',`${roi}%`);
-  setText('statHourly',`¥${parseInt(hourly).toLocaleString()}/h`);
-  setText('statWins',wins);
-  setText('statLosses',losses);
-
-  // カラー
-  const profEl=document.getElementById('statProfit');
-  if(profEl)profEl.style.color=totalProfit>=0?'var(--green)':'var(--red)';
-
-  // バックアップ情報
-  setText('backupSessionCount',sessions.length+'件');
-  const last=sessions[0];
-  setText('backupLastUpdate',last?last.date:'—');
+  const jpy=sessions.filter(s=>s.cur==='JPY');
+  const all=sessions;
+  const totalProfitJPY=all.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  const totalHours=all.reduce((a,s)=>a+(s.hours||0),0);
+  const wins=all.filter(s=>s.profit>0).length;
+  const wr=all.length?Math.round(wins/all.length*100):0;
+  const hourly=totalHours?Math.round(totalProfitJPY/totalHours):0;
+  const profits=all.map(s=>s.profitJPY??s.profit??0);
+  const best=profits.length?Math.max(...profits):0;
+  const worst=profits.length?Math.min(...profits):0;
+  const sign=totalProfitJPY>=0?'+':'';
+  const col=totalProfitJPY>=0?'var(--green)':'var(--red)';
+  const setT=(id,v,c)=>{const el=document.getElementById(id);if(el){el.textContent=v;if(c)el.style.color=c;}};
+  setT('sNet',`${sign}¥${totalProfitJPY.toLocaleString()}`,col);
+  setT('sNetJpy','JPY換算');
+  setT('sWR',`${wr}%`);
+  setT('sCnt',all.length);
+  setT('sHourly',`¥${hourly.toLocaleString()}/h`);
+  setT('sBest',best>=0?`+¥${best.toLocaleString()}`:`¥${best.toLocaleString()}`,'var(--green)');
+  setT('sWorst',`¥${worst.toLocaleString()}`,'var(--red)');
+  setT('sideNet',`${sign}¥${totalProfitJPY.toLocaleString()}`,col);
+  setT('sideHourly',`¥${hourly.toLocaleString()}/h`);
+  setT('sideBest',`+¥${best.toLocaleString()}`,'var(--green)');
+  setT('sideWorst',`¥${worst.toLocaleString()}`,'var(--red)');
+  setT('profileName',profile.displayName||currentUser?.displayName||'—');
+  setT('profileSub',`${all.length}セッション / 勝率${wr}%`);
+  const av=document.getElementById('profileAvatar');
+  if(av)av.textContent=(profile.displayName||currentUser?.displayName||'?').charAt(0).toUpperCase();
+  setT('backupSessionCount',all.length+'件');
+  setT('backupLastUpdate',all[0]?.date||'—');
+  setT('heroSync',isFirebaseReady?'Active':'Local');
 }
 
-function setText(id,val){
-  const el=document.getElementById(id);
-  if(el)el.textContent=val;
-}
-
-// ============================================================
-// [PokerLog] Transactions (txs)
-// ============================================================
+// ================================================================
+// [PokerLog] Balance (PWC/PT transactions)
+// ================================================================
 function addTx(){
-  const date=document.getElementById('txDate').value||new Date().toISOString().slice(0,10);
-  const type=document.getElementById('txType').value||'deposit';
-  const amount=parseFloat(document.getElementById('txAmount').value)||0;
-  const currency=document.getElementById('txCurrency').value||'JPY';
-  const memo=document.getElementById('txMemo').value.trim();
+  const date=document.getElementById('tDate')?.value||new Date().toISOString().slice(0,10);
+  const cur=document.getElementById('tCurrency')?.value||'PWC';
+  const type=document.getElementById('tType')?.value||'deposit';
+  const amount=parseFloat(document.getElementById('tAmount')?.value)||0;
+  const memo=document.getElementById('tMemo')?.value?.trim()||'';
   if(!amount){notify('金額を入力してください','err');return;}
-
-  const id=editTxId||Date.now().toString();
-  const amountJPY=convertToJPY(amount,currency);
-  const data={id,date,type,amount,currency,amountJPY,memo,updatedAt:Date.now()};
-
-  if(editTxId){
-    const idx=txs.findIndex(t=>t.id===editTxId);
-    if(idx>=0)txs[idx]=data;
-    editTxId=null;
-  }else{
-    txs.unshift(data);
-  }
-  lsSet('local_txs',txs);
-  saveDoc('txs',id,data);
-  document.getElementById('txDate').value='';
-  document.getElementById('txAmount').value='';
-  document.getElementById('txMemo').value='';
-  editTxId=null;
-  renderTxs();
-  notify('取引を保存しました');
+  const id=Date.now().toString();
+  const data={id,date,currency:cur,type,amount,memo,updatedAt:Date.now()};
+  txList_data.unshift(data);lsSet('local_txs',txList_data);saveDoc('txs',id,data);
+  document.getElementById('tAmount').value='';document.getElementById('tMemo').value='';
+  renderBalance();notify('取引を記録しました');
 }
 
 function deleteTx(id){
-  if(!confirm('この取引を削除しますか？'))return;
-  txs=txs.filter(t=>t.id!==id);
-  lsSet('local_txs',txs);
-  deleteDoc('txs',id);
-  renderTxs();
-  notify('削除しました');
+  if(!confirm('削除しますか？'))return;
+  txList_data=txList_data.filter(t=>t.id!==id);
+  lsSet('local_txs',txList_data);deleteDoc('txs',id);renderBalance();notify('削除しました');
 }
 
-function renderTxs(){
-  const list=document.getElementById('txList');
-  if(!list)return;
-  const typeLabels={deposit:'入金',withdraw:'出金',transfer:'振替',bonus:'ボーナス'};
-  if(!txs.length){
-    list.innerHTML='<div style="text-align:center;color:var(--text3);padding:1.5rem;font-size:13px">取引履歴がありません</div>';
-    return;
-  }
-  list.innerHTML=txs.slice(0,50).map(t=>{
-    const isIn=t.type==='deposit'||t.type==='bonus';
-    const sym=t.currency==='JPY'?'¥':t.currency+' ';
+function setTxFilter(type,el){
+  currentTxFilter=type;
+  document.querySelectorAll('#txSection .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderBalance();
+}
+
+function renderBalance(){
+  const pwcSessions=sessions.filter(s=>s.cur==='PWC');
+  const ptSessions=sessions.filter(s=>s.cur==='PT');
+  const pwcTxs=txList_data.filter(t=>t.currency==='PWC');
+  const ptTxs=txList_data.filter(t=>t.currency==='PT');
+  const calcBal=(txs,ses,cur)=>{
+    const inTypes=['deposit','bonus'];
+    const outTypes=['withdraw','used','fee'];
+    const inAmt=txs.filter(t=>inTypes.includes(t.type)).reduce((a,t)=>a+t.amount,0);
+    const outAmt=txs.filter(t=>outTypes.includes(t.type)).reduce((a,t)=>a+t.amount,0);
+    const sesProfit=ses.reduce((a,s)=>a+s.profit,0);
+    return inAmt-outAmt+sesProfit;
+  };
+  const pwcBal=calcBal(pwcTxs,pwcSessions,'PWC');
+  const ptBal=calcBal(ptTxs,ptSessions,'PT');
+  const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setT('balPWC',`${pwcBal.toLocaleString()} PWC`);
+  setT('balPWCSub',`セッション: ${pwcSessions.length}件`);
+  setT('balPWCJpy',`≈ ¥${convertToJPY(pwcBal,'PWC').toLocaleString()}`);
+  setT('balPT',`${ptBal.toLocaleString()} PT`);
+  setT('balPTSub',`セッション: ${ptSessions.length}件`);
+  setT('balPTJpy',`≈ ¥${convertToJPY(ptBal,'PT').toLocaleString()}`);
+
+  const txSection=document.getElementById('txSection');
+  const txListEl=document.getElementById('txList');
+  if(!txListEl)return;
+  let data=txList_data;
+  if(currentTxFilter!=='all'&&currentTxFilter!=='auto')data=data.filter(t=>t.currency===currentTxFilter);
+  if(currentTxFilter==='fee')data=data.filter(t=>t.type==='fee');
+  if(currentTxFilter==='auto')data=data.filter(t=>t.auto);
+  if(txSection)txSection.style.display=txList_data.length?'':'none';
+  if(!data.length){txListEl.innerHTML='<div class="empty">取引履歴がありません</div>';return;}
+  const typeLabels={deposit:'入金',withdraw:'出金',fee:'手数料',transfer:'トランスファー',bonus:'ボーナス',used:'使用'};
+  txListEl.innerHTML=data.slice(0,60).map(t=>{
+    const isIn=['deposit','bonus'].includes(t.type);
     return `<div class="item-row">
       <div class="item-info">
-        <div class="item-title">${typeLabels[t.type]||t.type} <span style="font-size:11px;color:var(--text3)">${t.currency}</span></div>
-        <div class="item-sub">${t.date}${t.memo?' / '+t.memo:''}</div>
+        <div class="item-title">${typeLabels[t.type]||t.type} <span style="font-size:11px;color:var(--text3)">${t.currency}</span>${t.auto?'<span style="font-size:10px;color:var(--text3);margin-left:4px">自動</span>':''}</div>
+        <div class="item-sub">${t.date}${t.memo?' / '+escHtml(t.memo):''}</div>
       </div>
       <div class="item-right">
-        <div class="item-amount ${isIn?'profit':'loss'}">${isIn?'+':'-'}${sym}${t.amount.toLocaleString()}</div>
-        <button class="btn-sm btn-danger" style="margin-top:4px" onclick="deleteTx('${t.id}')">削除</button>
+        <div class="item-amount ${isIn?'pos':'neg'}">${isIn?'+':'-'}${t.amount.toLocaleString()} ${t.currency}</div>
+        ${!t.auto?`<button class="btn-sm btn-danger" style="margin-top:4px;font-size:10px" onclick="deleteTx('${t.id}')">削除</button>`:''}
       </div>
     </div>`;
   }).join('');
 }
 
-// ============================================================
-// [PokerLog] Credit Transactions (crTxs)
-// ============================================================
-function addCrTx(){
-  const date=document.getElementById('crDate').value||new Date().toISOString().slice(0,10);
-  const type=document.getElementById('crType').value||'borrow';
-  const partner=document.getElementById('crPartner').value.trim();
-  const amount=parseFloat(document.getElementById('crAmount').value)||0;
-  const currency=document.getElementById('crCurrency').value||'JPY';
-  const memo=document.getElementById('crMemo').value.trim();
+// ================================================================
+// [PokerLog] Contract
+// ================================================================
+function saveContractInfo(){
+  const name=document.getElementById('cName')?.value?.trim()||'';
+  const team=document.getElementById('cTeam')?.value?.trim()||'';
+  const start=document.getElementById('cStart')?.value||'';
+  const end=document.getElementById('cEnd')?.value||'';
+  contractInfo={name,team,start,end,updatedAt:Date.now()};
+  lsSet('local_ci',contractInfo);
+  if(currentUser&&isFirebaseReady)db.collection('userData').doc(currentUser.uid).collection('contractInfo').doc('main').set(contractInfo).catch(()=>{});
+  renderContract();notify('契約情報を保存しました');
+}
+
+function addContractTx(){
+  const date=document.getElementById('crDate')?.value||new Date().toISOString().slice(0,10);
+  const type=document.getElementById('crType')?.value||'received';
+  const amount=parseFloat(document.getElementById('crAmount')?.value)||0;
+  const memo=document.getElementById('crMemo')?.value?.trim()||'';
   if(!amount){notify('金額を入力してください','err');return;}
-
   const id=Date.now().toString();
-  const amountJPY=convertToJPY(amount,currency);
-  const data={id,date,type,partner,amount,currency,amountJPY,memo,settled:false,updatedAt:Date.now()};
-  crTxs.unshift(data);
-  lsSet('local_crTxs',crTxs);
-  saveDoc('crTxs',id,data);
-  document.getElementById('crAmount').value='';
-  document.getElementById('crMemo').value='';
-  renderCrTxs();
-  notify('貸借を記録しました');
+  const data={id,date,type,amount,memo,updatedAt:Date.now()};
+  crTxList_data.unshift(data);lsSet('local_crTxs',crTxList_data);saveDoc('crTxs',id,data);
+  document.getElementById('crAmount').value='';document.getElementById('crMemo').value='';
+  renderContract();notify('記録しました');
 }
 
-function settleCrTx(id){
-  const idx=crTxs.findIndex(t=>t.id===id);
-  if(idx<0)return;
-  crTxs[idx].settled=true;
-  crTxs[idx].settledAt=Date.now();
-  lsSet('local_crTxs',crTxs);
-  saveDoc('crTxs',id,crTxs[idx]);
-  renderCrTxs();
-  notify('精算済みにしました');
-}
-
-function renderCrTxs(){
-  const list=document.getElementById('crTxList');
-  if(!list)return;
-  const typeLabels={borrow:'借り',lend:'貸し',repay:'返済',receive:'受け取り'};
-  const unsettled=crTxs.filter(t=>!t.settled);
-  const settled=crTxs.filter(t=>t.settled);
-  const renderItem=t=>{
-    const sym=t.currency==='JPY'?'¥':t.currency+' ';
-    return `<div class="item-row ${t.settled?'opacity-50':''}">
+function renderContract(){
+  const received=crTxList_data.filter(t=>['received','bonus'].includes(t.type)).reduce((a,t)=>a+t.amount,0);
+  const used=crTxList_data.filter(t=>['used','expense'].includes(t.type)).reduce((a,t)=>a+t.amount,0);
+  const autoUsed=sessions.filter(s=>s.source==='contract').reduce((a,s)=>a+(s.buyinJPY||0),0);
+  const totalUsed=used+autoUsed;
+  const balance=received-totalUsed;
+  const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setT('contractName',contractInfo.name||'契約未設定');
+  setT('contractTeam',contractInfo.team||'チーム名を設定してください');
+  setT('cBalance',`¥${balance.toLocaleString()}`);
+  setT('cReceived',`+¥${received.toLocaleString()}`);
+  setT('cUsed',`-¥${totalUsed.toLocaleString()}`);
+  const prog=document.getElementById('cProgress');
+  if(prog)prog.style.width=(received>0?Math.min(100,Math.round(totalUsed/received*100)):0)+'%';
+  const crTxSection=document.getElementById('crTxSection');
+  const crListEl=document.getElementById('crTxList');
+  if(!crListEl)return;
+  if(crTxSection)crTxSection.style.display=crTxList_data.length?'':'none';
+  const typeLabels={received:'受取',used:'使用',bonus:'ボーナス',expense:'経費精算'};
+  crListEl.innerHTML=crTxList_data.slice(0,40).map(t=>{
+    const isIn=['received','bonus'].includes(t.type);
+    return `<div class="item-row">
       <div class="item-info">
-        <div class="item-title">${typeLabels[t.type]||t.type}${t.partner?' — '+t.partner:''}</div>
-        <div class="item-sub">${t.date}${t.memo?' / '+t.memo:''}${t.settled?' [精算済]':''}</div>
+        <div class="item-title">${typeLabels[t.type]||t.type}${t.auto?'<span style="font-size:10px;color:var(--text3);margin-left:4px">自動</span>':''}</div>
+        <div class="item-sub">${t.date}${t.memo?' / '+escHtml(t.memo):''}</div>
       </div>
       <div class="item-right">
-        <div class="item-amount">${sym}${t.amount.toLocaleString()}</div>
-        ${!t.settled?`<button class="btn-sm" style="margin-top:4px" onclick="settleCrTx('${t.id}')">精算</button>`:''}
+        <div class="item-amount ${isIn?'pos':'neg'}">${isIn?'+':'-'}¥${t.amount.toLocaleString()}</div>
       </div>
     </div>`;
-  };
-  list.innerHTML=(unsettled.length?unsettled.map(renderItem).join(''):'<div style="color:var(--text3);font-size:13px;padding:1rem;text-align:center">未精算なし</div>')+
-    (settled.length?'<div style="font-size:11px;color:var(--text3);margin-top:12px;margin-bottom:4px">精算済み</div>'+settled.slice(0,10).map(renderItem).join(''):'');
+  }).join('');
 }
 
-// ============================================================
-// [PokerLog] Expenses / Costs
-// ============================================================
+// ================================================================
+// [PokerLog] Expense / Cost
+// ================================================================
 function addExpense(){
-  const date=document.getElementById('expDate').value||new Date().toISOString().slice(0,10);
-  const category=document.getElementById('expCategory').value||'travel';
-  const amount=parseFloat(document.getElementById('expAmount').value)||0;
-  const currency=document.getElementById('expCurrency').value||'JPY';
-  const memo=document.getElementById('expMemo').value.trim();
+  const date=document.getElementById('eDate')?.value||new Date().toISOString().slice(0,10);
+  const type=document.getElementById('eType')?.value||'other';
+  const amount=parseFloat(document.getElementById('eAmount')?.value)||0;
+  const venue=document.getElementById('eVenue')?.value?.trim()||'';
+  const memo=document.getElementById('eMemo')?.value?.trim()||'';
+  const drinkQty=parseInt(document.getElementById('eDrinkQty')?.value)||0;
   if(!amount){notify('金額を入力してください','err');return;}
-
   const id=Date.now().toString();
-  const amountJPY=convertToJPY(amount,currency);
-  const data={id,date,category,amount,currency,amountJPY,memo,updatedAt:Date.now()};
-  expenses.unshift(data);
-  lsSet('local_expenses',expenses);
-  saveDoc('expenses',id,data);
-  document.getElementById('expAmount').value='';
-  document.getElementById('expMemo').value='';
-  renderExpenses();
-  notify('経費を記録しました');
+  const data={id,date,type,amount,venue,memo,drinkQty,updatedAt:Date.now()};
+  expList_data.unshift(data);lsSet('local_expenses',expList_data);saveDoc('expenses',id,data);
+  document.getElementById('eAmount').value='';document.getElementById('eMemo').value='';document.getElementById('eDrinkQty').value='';
+  renderCost();notify('経費を追加しました');
 }
 
 function deleteExpense(id){
-  if(!confirm('この経費を削除しますか？'))return;
-  expenses=expenses.filter(e=>e.id!==id);
-  lsSet('local_expenses',expenses);
-  deleteDoc('expenses',id);
-  renderExpenses();
-  notify('削除しました');
+  if(!confirm('削除しますか？'))return;
+  expList_data=expList_data.filter(e=>e.id!==id);
+  lsSet('local_expenses',expList_data);deleteDoc('expenses',id);renderCost();notify('削除しました');
 }
 
-function renderExpenses(){
-  const list=document.getElementById('expList');
-  if(!list)return;
-  const catLabels={travel:'交通',food:'飲食',hotel:'宿泊',entry:'エントリー費',other:'その他'};
-  if(!expenses.length){
-    list.innerHTML='<div style="text-align:center;color:var(--text3);padding:1.5rem;font-size:13px">経費がありません</div>';
-    return;
-  }
-  list.innerHTML=expenses.slice(0,50).map(e=>{
-    const sym=e.currency==='JPY'?'¥':e.currency+' ';
-    return `<div class="item-row">
-      <div class="item-info">
-        <div class="item-title">${catLabels[e.category]||e.category}</div>
-        <div class="item-sub">${e.date}${e.memo?' / '+e.memo:''}</div>
-      </div>
-      <div class="item-right">
-        <div class="item-amount loss">-${sym}${e.amount.toLocaleString()}</div>
-        <button class="btn-sm btn-danger" style="margin-top:4px" onclick="deleteExpense('${e.id}')">削除</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  // 合計
-  const total=expenses.reduce((a,e)=>a+(e.amountJPY||e.amount||0),0);
-  setText('expTotal',`経費合計: ¥${total.toLocaleString()}`);
+function setExpFilter(type,el){
+  currentExpFilter=type;
+  document.querySelectorAll('#expSection .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderCost();
 }
 
-// ============================================================
-// [PokerLog] Contracts
-// ============================================================
-function addContract(){
-  const name=document.getElementById('ciName').value.trim();
-  const partner=document.getElementById('ciPartner').value.trim();
-  const myShare=parseFloat(document.getElementById('ciMyShare').value)||50;
-  const stakeType=document.getElementById('ciStakeType').value||'backing';
-  const memo=document.getElementById('ciMemo').value.trim();
-  if(!name){notify('契約名を入力してください','err');return;}
-
-  const id=editContractId||Date.now().toString();
-  const data={id,name,partner,myShare,stakeType,memo,active:true,createdAt:Date.now(),updatedAt:Date.now()};
-
-  if(editContractId){
-    const idx=contracts.findIndex(c=>c.id===editContractId);
-    if(idx>=0)contracts[idx]=data;
-    editContractId=null;
-  }else{
-    contracts.unshift(data);
-  }
-  lsSet('local_ci',contracts);
-  saveDoc('contracts',id,data);
-  document.getElementById('ciName').value='';
-  document.getElementById('ciPartner').value='';
-  document.getElementById('ciMemo').value='';
-  editContractId=null;
-  renderContracts();
-  notify('契約を保存しました');
-}
-
-function deleteContract(id){
-  if(!confirm('この契約を削除しますか？'))return;
-  contracts=contracts.filter(c=>c.id!==id);
-  lsSet('local_ci',contracts);
-  deleteDoc('contracts',id);
-  renderContracts();
-  notify('削除しました');
-}
-
-function renderContracts(){
-  const list=document.getElementById('ciList');
-  if(!list)return;
-  const typeLabels={backing:'バッキング',staking:'ステーキング',split:'スプリット',other:'その他'};
-  if(!contracts.length){
-    list.innerHTML='<div style="text-align:center;color:var(--text3);padding:1.5rem;font-size:13px">契約がありません</div>';
-    return;
-  }
-  list.innerHTML=contracts.map(c=>`
+function renderCost(){
+  const entrance=expList_data.filter(e=>e.type==='entrance').reduce((a,e)=>a+e.amount,0);
+  const drink=expList_data.filter(e=>e.type==='drink').reduce((a,e)=>a+e.amount,0);
+  const other=expList_data.filter(e=>!['entrance','drink'].includes(e.type)).reduce((a,e)=>a+e.amount,0);
+  const total=entrance+drink+other;
+  const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setT('costEntrance',`¥${entrance.toLocaleString()}`);setT('costDrink',`¥${drink.toLocaleString()}`);
+  setT('costOther',`¥${other.toLocaleString()}`);setT('costTotal',`¥${total.toLocaleString()}`);
+  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  setT('costNetNote',`経費差し引き後: ¥${(totalProfit-total).toLocaleString()}`);
+  const expSection=document.getElementById('expSection');
+  const expListEl=document.getElementById('expList');
+  if(!expListEl)return;
+  if(expSection)expSection.style.display=expList_data.length?'':'none';
+  let data=expList_data;
+  if(currentExpFilter!=='all'&&currentExpFilter!=='auto')data=data.filter(e=>e.type===currentExpFilter);
+  if(currentExpFilter==='auto')data=data.filter(e=>e.auto);
+  const typeLabels={entrance:'エントランス',drink:'ドリンク',transport:'交通費',hotel:'宿泊費',food:'飲食費',other:'その他'};
+  expListEl.innerHTML=data.slice(0,60).map(e=>`
     <div class="item-row">
       <div class="item-info">
-        <div class="item-title">${c.name} <span style="font-size:11px;color:var(--text3)">${typeLabels[c.stakeType]||c.stakeType}</span></div>
-        <div class="item-sub">${c.partner?'相手: '+c.partner+' / ':''} 自分: ${c.myShare}%${c.memo?' / '+c.memo:''}</div>
+        <div class="item-title">${typeLabels[e.type]||e.type}${e.auto?'<span style="font-size:10px;color:var(--text3);margin-left:4px">自動</span>':''}${e.drinkQty?` ×${e.drinkQty}`:''}</div>
+        <div class="item-sub">${e.date}${e.venue?' / '+escHtml(e.venue):''}${e.memo?' / '+escHtml(e.memo):''}</div>
       </div>
       <div class="item-right">
-        <div style="display:flex;gap:4px">
-          <button class="btn-sm btn-danger" onclick="deleteContract('${c.id}')">削除</button>
-        </div>
+        <div class="item-amount neg">-¥${e.amount.toLocaleString()}</div>
+        ${!e.auto?`<button class="btn-sm btn-danger" style="margin-top:4px;font-size:10px" onclick="deleteExpense('${e.id}')">削除</button>`:''}
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-// ============================================================
-// [PokerLog] Charts (Chart.js)
-// ============================================================
-function renderCharts(){
-  renderLineChart();
-  renderPieChart();
-  renderBarChart();
+// ================================================================
+// [PokerLog] Account / Profile
+// ================================================================
+function renderAccount(){
+  document.getElementById('rHandle')&&(document.getElementById('rHandle').value=profile.handle||'');
+  document.getElementById('rDisplayName')&&(document.getElementById('rDisplayName').value=profile.displayName||currentUser?.displayName||'');
+  document.getElementById('rBio')&&(document.getElementById('rBio').value=profile.bio||'');
+  document.getElementById('rTwitter')&&(document.getElementById('rTwitter').value=profile.twitter||'');
 }
 
-function renderLineChart(){
-  const ctx=document.getElementById('chartLine');
-  if(!ctx)return;
-  if(chartLine){chartLine.destroy();chartLine=null;}
-
-  const sorted=[...sessions].sort((a,b)=>a.date.localeCompare(b.date));
-  let cum=0;
-  const labels=sorted.map(s=>s.date);
-  const data=sorted.map(s=>{cum+=(s.profitJPY||s.profit||0);return cum;});
-
-  chartLine=new Chart(ctx,{
-    type:'line',
-    data:{
-      labels,
-      datasets:[{
-        label:'累計収支 (JPY)',
-        data,
-        borderColor:'#7cf7ff',
-        backgroundColor:'rgba(124,247,255,0.08)',
-        borderWidth:2,
-        pointRadius:3,
-        fill:true,
-        tension:0.3
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#8ea4dd',font:{size:11}}}},
-      scales:{
-        x:{ticks:{color:'#8ea4dd',maxRotation:45,font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}},
-        y:{ticks:{color:'#8ea4dd',font:{size:10},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.05)'}}
-      }
-    }
-  });
-}
-
-function renderPieChart(){
-  const ctx=document.getElementById('chartPie');
-  if(!ctx)return;
-  if(chartPie){chartPie.destroy();chartPie=null;}
-
-  const gameMap={};
-  sessions.forEach(s=>{
-    const g=s.game||'Other';
-    gameMap[g]=(gameMap[g]||0)+1;
-  });
-  const labels=Object.keys(gameMap);
-  const data=Object.values(gameMap);
-  const colors=['#7cf7ff','#8b6cff','#f7a35c','#4ade80','#f87171','#60a5fa','#fbbf24'];
-
-  chartPie=new Chart(ctx,{
-    type:'doughnut',
-    data:{labels,datasets:[{data,backgroundColor:colors.slice(0,labels.length),borderWidth:1,borderColor:'rgba(255,255,255,0.1)'}]},
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{color:'#8ea4dd',font:{size:11}}}}
-    }
-  });
-}
-
-function renderBarChart(){
-  const ctx=document.getElementById('chartBar');
-  if(!ctx)return;
-  if(chartBar){chartBar.destroy();chartBar=null;}
-
-  const casinoMap={};
-  sessions.forEach(s=>{
-    const c=s.casino||'不明';
-    casinoMap[c]=(casinoMap[c]||0)+(s.profitJPY||s.profit||0);
-  });
-  const sorted=Object.entries(casinoMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const labels=sorted.map(e=>e[0]);
-  const data=sorted.map(e=>e[1]);
-  const colors=data.map(v=>v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
-
-  chartBar=new Chart(ctx,{
-    type:'bar',
-    data:{labels,datasets:[{label:'場所別収支 (JPY)',data,backgroundColor:colors,borderWidth:0}]},
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#8ea4dd',font:{size:11}}}},
-      scales:{
-        x:{ticks:{color:'#8ea4dd',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}},
-        y:{ticks:{color:'#8ea4dd',font:{size:10},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.05)'}}
-      }
-    }
-  });
-}
-
-// ============================================================
-// [PokerLog] AI Tips
-// ============================================================
-function renderAITips(){
-  const el=document.getElementById('aiTipsContent');
-  if(!el)return;
-  if(!sessions.length){
-    el.innerHTML='<div style="color:var(--text3);font-size:13px">セッションを追加するとAIアドバイスが表示されます。</div>';
-    return;
-  }
-  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY||s.profit||0),0);
-  const winRate=sessions.length?Math.round(sessions.filter(s=>s.profit>0).length/sessions.length*100):0;
-  const totalHours=sessions.reduce((a,s)=>a+(s.hours||0),0);
-  const hourly=totalHours?(totalProfit/totalHours).toFixed(0):0;
-  const avgSession=(totalProfit/sessions.length).toFixed(0);
-
-  const tips=[];
-  if(winRate>=60)tips.push({icon:'🎯',title:'勝率良好',body:`勝率 ${winRate}% は平均以上です。現在の戦略を維持しましょう。`});
-  else if(winRate<40)tips.push({icon:'⚠️',title:'勝率改善が必要',body:`勝率 ${winRate}% は改善の余地があります。ハンドレンジを見直しましょう。`});
-
-  if(parseFloat(hourly)>1000)tips.push({icon:'⏱️',title:'高い時給',body:`時給 ¥${parseInt(hourly).toLocaleString()} は優秀です。長時間セッションを検討してみてください。`});
-  else if(parseFloat(hourly)<0)tips.push({icon:'⏱️',title:'時給マイナス',body:'時給がマイナスです。セッション時間・バイインサイズを見直すことをお勧めします。'});
-
-  if(totalProfit>0)tips.push({icon:'📈',title:'累計プラス',body:`累計 ¥${totalProfit.toLocaleString()} のプラスです。バンクロール管理を継続しましょう。`});
-  else tips.push({icon:'📉',title:'累計マイナス',body:'現在累計マイナスです。セッション数を増やしてサンプルサイズを大きくしましょう。'});
-
-  tips.push({icon:'💡',title:'平均セッション収支',body:`1セッション平均 ¥${parseInt(avgSession).toLocaleString()} です。`});
-
-  el.innerHTML=tips.map(t=>`
-    <div style="background:rgba(124,247,255,0.04);border:1px solid rgba(124,247,255,0.1);border-radius:10px;padding:14px;margin-bottom:10px">
-      <div style="font-size:15px;font-weight:700;color:var(--cyan);margin-bottom:6px">${t.icon} ${t.title}</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.6">${t.body}</div>
-    </div>
-  `).join('');
-}
-
-// ============================================================
-// [PokerLog] BBS (Bulletin Board)
-// ============================================================
-async function loadBBS(){
-  if(!isFirebaseReady||!currentUser)return;
-  try{
-    const snap=await db.collection('bbs').orderBy('createdAt','desc').limit(50).get();
-    bbsMessages=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderBBS();
-  }catch(e){
-    console.error('[PokerLog] loadBBS failed:',e);
-  }
-}
-
-function renderBBS(){
-  const list=document.getElementById('bbsList');
-  if(!list)return;
-  if(!bbsMessages.length){
-    list.innerHTML='<div style="text-align:center;color:var(--text3);padding:2rem;font-size:13px">投稿がありません。最初の投稿をしてみましょう！</div>';
-    return;
-  }
-  list.innerHTML=bbsMessages.map(m=>{
-    const isOwn=currentUser&&m.uid===currentUser.uid;
-    const time=m.createdAt?new Date(m.createdAt.seconds*1000).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-    return `<div class="bbs-item ${isOwn?'own':''}">
-      <div class="bbs-meta">
-        <span class="bbs-author">${escHtml(m.displayName||'匿名')}</span>
-        <span class="bbs-time">${time}</span>
-        ${!isOwn?`<button class="btn-sm" style="font-size:10px;padding:1px 6px;margin-left:4px" onclick="openReport('${m.uid}','${escHtml(m.displayName||'匿名')}')">通報</button>`:''}
-      </div>
-      <div class="bbs-text">${escHtml(m.text)}</div>
-      ${isOwn?`<button class="btn-sm btn-danger" style="font-size:10px;margin-top:4px" onclick="deleteBBS('${m.id}')">削除</button>`:''}
-    </div>`;
-  }).join('');
-}
-
-async function postBBS(){
-  const input=document.getElementById('bbsInput');
-  const text=input.value.trim();
-  if(!text||!currentUser){return;}
-  if(text.length>500){notify('500文字以内で入力してください','err');return;}
-  try{
-    await db.collection('bbs').add({
-      uid:currentUser.uid,
-      displayName:currentUser.displayName||'匿名',
-      text,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    input.value='';
-    await loadBBS();
-  }catch(e){
-    console.error('[PokerLog] postBBS failed:',e);
-    notify('投稿に失敗しました','err');
-  }
-}
-
-async function deleteBBS(id){
-  if(!confirm('この投稿を削除しますか？'))return;
-  try{
-    await db.collection('bbs').doc(id).delete();
-    await loadBBS();
-    notify('削除しました');
-  }catch(e){
-    notify('削除に失敗しました','err');
-  }
-}
-
-// ============================================================
-// [PokerLog] DM
-// ============================================================
-async function loadDMPartners(){
-  if(!currentUser||!isFirebaseReady)return;
-  const el=document.getElementById('dmPartnerList');
-  if(!el)return;
-  // DM相手一覧は ranking から簡易実装
-  el.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">ランキングからDMを送ることができます</div>';
-}
-
-async function openDM(uid,displayName){
-  currentDMPartner={uid,displayName};
-  const panel=document.getElementById('dmPanel');
-  const nameEl=document.getElementById('dmPartnerName');
-  if(nameEl)nameEl.textContent=displayName;
-  if(panel)panel.style.display='flex';
-  await loadDMMessages();
-}
-
-async function loadDMMessages(){
-  if(!currentUser||!currentDMPartner||!isFirebaseReady)return;
-  const chatId=[currentUser.uid,currentDMPartner.uid].sort().join('_');
-  try{
-    const snap=await db.collection('dms').doc(chatId).collection('messages').orderBy('createdAt','asc').limit(100).get();
-    const msgs=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderDMMessages(msgs);
-  }catch(e){
-    console.error('[PokerLog] loadDMMessages failed:',e);
-  }
-}
-
-function renderDMMessages(msgs){
-  const list=document.getElementById('dmMessages');
-  if(!list)return;
-  list.innerHTML=msgs.map(m=>{
-    const isOwn=m.uid===currentUser.uid;
-    const time=m.createdAt?new Date(m.createdAt.seconds*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
-    return `<div class="dm-bubble ${isOwn?'own':'other'}">
-      <div class="dm-text">${escHtml(m.text)}</div>
-      <div class="dm-time">${time}</div>
-    </div>`;
-  }).join('');
-  list.scrollTop=list.scrollHeight;
-}
-
-async function sendDM(){
-  const input=document.getElementById('dmInput');
-  const text=input?.value?.trim();
-  if(!text||!currentUser||!currentDMPartner)return;
-  const chatId=[currentUser.uid,currentDMPartner.uid].sort().join('_');
-  try{
-    await db.collection('dms').doc(chatId).collection('messages').add({
-      uid:currentUser.uid,
-      displayName:currentUser.displayName||'匿名',
-      text,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    input.value='';
-    await loadDMMessages();
-  }catch(e){
-    notify('送信に失敗しました','err');
-  }
-}
-
-// ============================================================
-// [PokerLog] Ranking
-// ============================================================
-async function loadRanking(){
-  if(!isFirebaseReady)return;
-  const list=document.getElementById('rankList');
-  if(!list)return;
-  try{
-    const snap=await db.collection('users').orderBy('totalProfit','desc').limit(50).get();
-    rankingData=snap.docs.map(d=>({uid:d.id,...d.data()}));
-    renderRanking();
-  }catch(e){
-    console.error('[PokerLog] loadRanking failed:',e);
-    if(list)list.innerHTML='<div style="color:var(--text3);font-size:13px;padding:1rem">ランキングを読み込めませんでした</div>';
-  }
-}
-
-function renderRanking(){
-  const list=document.getElementById('rankList');
-  if(!list)return;
-  if(!rankingData.length){
-    list.innerHTML='<div style="text-align:center;color:var(--text3);padding:2rem;font-size:13px">まだデータがありません</div>';
-    return;
-  }
-  list.innerHTML=rankingData.map((u,i)=>{
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-    const profit=u.totalProfit||0;
-    const isMe=currentUser&&u.uid===currentUser.uid;
-    return `<div class="item-row ${isMe?'my-rank':''}">
-      <div class="item-info">
-        <div class="item-title">${medal} ${escHtml(u.displayName||'匿名')} ${isMe?'(あなた)':''}</div>
-        <div class="item-sub">${u.bio?escHtml(u.bio.slice(0,40)):''}</div>
-      </div>
-      <div class="item-right">
-        <div class="item-amount ${profit>=0?'profit':'loss'}">${profit>=0?'+':''}¥${Math.abs(profit).toLocaleString()}</div>
-        ${!isMe&&currentUser?`<button class="btn-sm" style="margin-top:4px" onclick="openDM('${u.uid}','${escHtml(u.displayName||'匿名')}')">DM</button>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ============================================================
-// [PokerLog] Balance (残高)
-// ============================================================
-function renderBalance(){
-  const el=document.getElementById('balanceContent');
-  if(!el)return;
-
-  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY||s.profit||0),0);
-  const totalDeposit=txs.filter(t=>t.type==='deposit'||t.type==='bonus').reduce((a,t)=>a+(t.amountJPY||t.amount||0),0);
-  const totalWithdraw=txs.filter(t=>t.type==='withdraw').reduce((a,t)=>a+(t.amountJPY||t.amount||0),0);
-  const totalExpense=expenses.reduce((a,e)=>a+(e.amountJPY||e.amount||0),0);
-  const balance=totalDeposit-totalWithdraw+totalProfit-totalExpense;
-
-  el.innerHTML=`
-    <div class="stats-grid" style="margin-bottom:1.5rem">
-      <div class="stat-card">
-        <div class="stat-label">現在残高</div>
-        <div class="stat-value ${balance>=0?'profit':'loss'}">${balance>=0?'+':''}¥${balance.toLocaleString()}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">累計入金</div>
-        <div class="stat-value">¥${totalDeposit.toLocaleString()}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">累計出金</div>
-        <div class="stat-value">¥${totalWithdraw.toLocaleString()}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">累計経費</div>
-        <div class="stat-value loss">-¥${totalExpense.toLocaleString()}</div>
-      </div>
-    </div>
-    <div class="section-title">入出金履歴</div>
-  `;
-  renderTxs();
-  renderCrTxs();
-}
-
-// ============================================================
-// [PokerLog] Profile / Account
-// ============================================================
 async function saveProfile(){
-  const displayName=document.getElementById('profName').value.trim();
-  const bio=document.getElementById('profBio').value.trim();
-  if(!displayName){notify('表示名は必須です','err');return;}
   if(!currentUser)return;
-
+  const handle=document.getElementById('rHandle')?.value?.trim()||'';
+  const displayName=document.getElementById('rDisplayName')?.value?.trim()||'';
+  const bio=document.getElementById('rBio')?.value?.trim()||'';
+  const twitter=document.getElementById('rTwitter')?.value?.trim()||'';
+  if(!displayName){notify('表示名は必須です','err');return;}
   try{
     await currentUser.updateProfile({displayName});
-    profile.displayName=displayName;
-    profile.bio=bio;
-    await db.collection('users').doc(currentUser.uid).set({displayName,bio},{merge:true});
+    profile={handle,displayName,bio,twitter};
+    await db.collection('users').doc(currentUser.uid).set({handle,displayName,bio,twitter},{merge:true});
     lsSet('local_profile',profile);
-    setText('topUserName',displayName);
+    const navName=document.getElementById('navName');if(navName)navName.textContent=displayName;
+    const profileNameEl=document.getElementById('profileName');if(profileNameEl)profileNameEl.textContent=displayName;
     notify('プロフィールを更新しました');
-  }catch(e){
-    console.error('[PokerLog] saveProfile failed:',e);
-    notify('更新に失敗しました','err');
-  }
+  }catch(e){notify('更新失敗: '+e.message,'err');}
 }
 
 async function changePassword(){
-  const p1=document.getElementById('newPass1').value;
-  const p2=document.getElementById('newPass2').value;
-  if(!p1||p1.length<6){notify('パスワードは6文字以上で入力してください','err');return;}
+  const p1=document.getElementById('newPass1')?.value||'';
+  const p2=document.getElementById('newPass2')?.value||'';
+  if(p1.length<6){notify('6文字以上のパスワードを入力してください','err');return;}
   if(p1!==p2){notify('パスワードが一致しません','err');return;}
-  try{
-    await currentUser.updatePassword(p1);
-    document.getElementById('newPass1').value='';
-    document.getElementById('newPass2').value='';
-    notify('パスワードを変更しました');
-  }catch(e){
-    if(e.code==='auth/requires-recent-login'){
-      notify('セキュリティのため再ログインが必要です','warn');
-    }else{
-      notify('変更に失敗しました: '+e.message,'err');
-    }
-  }
-}
-
-function renderAccount(){
-  const nameEl=document.getElementById('profName');
-  const bioEl=document.getElementById('profBio');
-  const emailEl=document.getElementById('profEmail');
-  if(nameEl)nameEl.value=profile.displayName||currentUser?.displayName||'';
-  if(bioEl)bioEl.value=profile.bio||'';
-  if(emailEl)emailEl.value=currentUser?.email||'';
+  try{await currentUser.updatePassword(p1);document.getElementById('newPass1').value='';document.getElementById('newPass2').value='';notify('パスワードを変更しました');}
+  catch(e){if(e.code==='auth/requires-recent-login')notify('セキュリティのため再ログインが必要です','warn');else notify('変更失敗: '+e.message,'err');}
 }
 
 function confirmDeleteAccount(){
-  if(!confirm('アカウントを削除すると全データが消去され、復元できません。\n本当に削除しますか？'))return;
-  if(!confirm('最終確認: アカウントを削除します。よろしいですか？'))return;
+  if(!confirm('アカウントを削除すると全データが消去されます。本当に削除しますか？'))return;
+  if(!confirm('最終確認: 削除します。この操作は取り消せません。'))return;
   deleteAccount();
 }
-
 async function deleteAccount(){
   if(!currentUser)return;
   try{
     const uid=currentUser.uid;
-    // Firestore データを削除（ベストエフォート）
-    const cols=['sessions','txs','crTxs','expenses','contracts'];
-    for(const col of cols){
-      const snap=await db.collection('userData').doc(uid).collection(col).get();
-      const batch=db.batch();
-      snap.docs.forEach(d=>batch.delete(d.ref));
-      if(snap.docs.length)await batch.commit();
-    }
+    const cols=['sessions','txs','crTxs','expenses'];
+    for(const col of cols){const snap=await db.collection('userData').doc(uid).collection(col).get();const batch=db.batch();snap.docs.forEach(d=>batch.delete(d.ref));if(snap.docs.length)await batch.commit();}
     await db.collection('users').doc(uid).delete();
     await currentUser.delete();
-    // localStorage クリア
-    ['local_sessions','local_txs','local_crTxs','local_expenses','local_ci','local_profile'].forEach(k=>lsDel(k));
+    ['local_sessions','local_txs','local_crTxs','local_expenses','local_ci','local_profile'].forEach(k=>localStorage.removeItem(k));
     notify('アカウントを削除しました');
-  }catch(e){
-    if(e.code==='auth/requires-recent-login'){
-      notify('セキュリティのため再ログインが必要です','warn');
-    }else{
-      console.error('[PokerLog] deleteAccount failed:',e);
-      notify('削除に失敗しました','err');
-    }
-  }
+  }catch(e){if(e.code==='auth/requires-recent-login')notify('セキュリティのため再ログインが必要です','warn');else notify('削除失敗','err');}
 }
 
-// ============================================================
-// [PokerLog] Password reset
-// ============================================================
-async function resetPassword(){
-  const email=document.getElementById('loginEmail').value.trim();
-  if(!email){
-    document.getElementById('loginErr').textContent='メールアドレスを入力してください';
-    document.getElementById('loginErr').style.display='block';
-    return;
-  }
-  try{
-    await auth.sendPasswordResetEmail(email);
-    document.getElementById('loginErr').style.color='var(--green)';
-    document.getElementById('loginErr').textContent=`パスワードリセットメールを ${email} に送信しました`;
-    document.getElementById('loginErr').style.display='block';
-  }catch(e){
-    document.getElementById('loginErr').style.color='';
-    document.getElementById('loginErr').textContent=`エラー: ${e.message}`;
-    document.getElementById('loginErr').style.display='block';
-  }
-}
-
-// ============================================================
-// [PokerLog] Report
-// ============================================================
-function openReport(uid,name){
-  reportTarget={uid,name};
-  setText('reportTargetLabel',`通報対象: ${name}`);
-  document.getElementById('reportModal').classList.add('open');
-}
-
-async function submitReport(){
-  if(!reportTarget||!currentUser)return;
-  const reason=document.getElementById('reportReason').value;
-  const detail=document.getElementById('reportDetail').value.trim();
-  try{
-    await db.collection('reports').add({
-      reporterUid:currentUser.uid,
-      targetUid:reportTarget.uid,
-      targetName:reportTarget.name,
-      reason,detail,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    document.getElementById('reportModal').classList.remove('open');
-    document.getElementById('reportDetail').value='';
-    notify('通報を送信しました');
-  }catch(e){
-    notify('送信に失敗しました','err');
-  }
-}
-
-// ============================================================
-// [PokerLog] Rate Modal
-// ============================================================
-function openRateModal(){
-  const container=document.getElementById('rateEditFields');
-  if(!container)return;
-  const currencies=['USD','EUR','GBP','CNY','KRW','THB'];
-  container.innerHTML=currencies.map(c=>`
-    <div style="display:flex;align-items:center;gap:8px">
-      <label style="width:50px;font-size:13px;color:var(--text2)">${c}</label>
-      <input type="number" id="rate_${c}" value="${rates[c]||''}" placeholder="${c}あたりのJPY" style="flex:1">
-    </div>
-  `).join('');
-  document.getElementById('rateModal').classList.add('open');
-}
-
-function saveManualRates(){
-  const currencies=['USD','EUR','GBP','CNY','KRW','THB'];
-  currencies.forEach(c=>{
-    const v=parseFloat(document.getElementById('rate_'+c)?.value);
-    if(v>0){manualRates[c]=v;rates[c]=v;}
-  });
-  lsSet('manualRates',manualRates);
-  document.getElementById('rateModal').classList.remove('open');
-  document.getElementById('rateBar').textContent=
-    `USD¥${rates.USD.toFixed(1)} EUR¥${rates.EUR.toFixed(1)} GBP¥${rates.GBP.toFixed(1)} KRW¥${rates.KRW.toFixed(3)} THB¥${rates.THB.toFixed(2)}`;
-  notify('レートを更新しました');
-}
-
-// ============================================================
-// [PokerLog] Export
-// ============================================================
 function exportData(){
-  const data={sessions,txs,crTxs,expenses,contracts,profile,exportedAt:new Date().toISOString()};
+  const data={sessions,txs:txList_data,crTxs:crTxList_data,expenses:expList_data,contractInfo,profile,exportedAt:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`pokerlog_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const a=document.createElement('a');a.href=url;a.download=`pokerlog_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
   notify('エクスポートしました');
 }
 
-// ============================================================
-// [PokerLog] Twitter Share
-// ============================================================
 function shareToTwitter(){
-  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY||s.profit||0),0);
+  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
   const sign=totalProfit>=0?'+':'';
   const text=`PokerLog: 累計収支 ${sign}¥${totalProfit.toLocaleString()} (${sessions.length}セッション) #PokerLog #ポーカー`;
   window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,'_blank');
 }
 
-// ============================================================
-// [PokerLog] Local Mode
-// ============================================================
-function startLocalMode(){
-  document.getElementById('authScreen').style.display='none';
-  document.getElementById('mainApp').style.display='block';
-  document.getElementById('topUserName').textContent='ゲスト（ローカル）';
-  initLocalMode();
-  fetchRates();
+// ================================================================
+// [PokerLog] BBS
+// ================================================================
+function setBbsCat(cat,el){
+  currentBbsCat=cat;
+  document.querySelectorAll('.bbs-cat-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  loadBbs();
 }
 
-// ============================================================
-// [PokerLog] Utilities
-// ============================================================
-function escHtml(s){
-  if(!s)return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+async function loadBbs(){
+  if(!isFirebaseReady||!currentUser)return;
+  const listEl=document.getElementById('bbsList');
+  if(!listEl)return;
+  try{
+    let q=db.collection('bbs').orderBy('createdAt','desc').limit(80);
+    if(currentBbsCat!=='all')q=q.where('cat','==',currentBbsCat);
+    const snap=await q.get();
+    const msgs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!msgs.length){listEl.innerHTML='<div class="empty">投稿がありません。最初の投稿をしてみましょう！</div>';return;}
+    listEl.innerHTML=msgs.map(m=>{
+      const isOwn=currentUser&&m.uid===currentUser.uid;
+      const t=m.createdAt?new Date(m.createdAt.seconds*1000).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      const catLabel={info:'情報',result:'結果',question:'質問',tournament:'大会',strategy:'戦略',other:'雑談'}[m.cat]||m.cat||'';
+      return `<div class="bbs-item">
+        <div class="bbs-meta">
+          <span class="bbs-author">${escHtml(m.handle||m.displayName||'匿名')}</span>
+          ${catLabel?`<span style="font-size:10px;background:rgba(201,168,76,.15);color:var(--gold);border-radius:10px;padding:1px 6px;margin-left:4px">${catLabel}</span>`:''}
+          <span class="bbs-time">${t}</span>
+          ${!isOwn?`<button class="btn-sm" style="font-size:10px;padding:1px 5px;margin-left:4px" onclick="openReport('${escHtml(m.handle||m.displayName||'匿名')}')">通報</button>`:''}
+          ${isOwn?`<button class="btn-sm btn-danger" style="font-size:10px;padding:1px 5px;margin-left:4px" onclick="deleteBbsPost('${m.id}')">削除</button>`:''}
+        </div>
+        ${m.title?`<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">${escHtml(m.title)}</div>`:''}
+        <div class="bbs-text">${escHtml(m.body||m.text||'')}</div>
+      </div>`;
+    }).join('');
+  }catch(e){console.error('[PokerLog] loadBbs:',e);listEl.innerHTML='<div class="empty">読み込みエラー</div>';}
 }
 
+async function addBbsPost(){
+  const cat=document.getElementById('bbsNewCat')?.value||'other';
+  const title=document.getElementById('bbsNewTitle')?.value?.trim()||'';
+  const body=document.getElementById('bbsNewBody')?.value?.trim()||'';
+  if(!body||!currentUser){notify('本文を入力してください','err');return;}
+  if(body.length>1000){notify('1000文字以内で入力してください','err');return;}
+  const btn=document.getElementById('btnBbsPost');
+  if(btn){btn.disabled=true;btn.textContent='投稿中...';}
+  try{
+    await db.collection('bbs').add({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'匿名',displayName:currentUser.displayName||'匿名',cat,title,body,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    document.getElementById('bbsNewTitle').value='';document.getElementById('bbsNewBody').value='';
+    await loadBbs();notify('投稿しました');
+  }catch(e){notify('投稿失敗','err');}
+  finally{if(btn){btn.disabled=false;btn.textContent='♠ 投稿する';}}
+}
+
+async function deleteBbsPost(id){
+  if(!confirm('削除しますか？'))return;
+  try{await db.collection('bbs').doc(id).delete();await loadBbs();notify('削除しました');}
+  catch{notify('削除失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] DM
+// ================================================================
+async function loadDmConvos(){
+  const listEl=document.getElementById('dmUserList');
+  if(!listEl||!currentUser||!isFirebaseReady)return;
+  const myHandle=document.getElementById('dmMyHandle');
+  if(myHandle)myHandle.textContent=profile.handle||currentUser.displayName||'';
+  try{
+    const snap=await db.collection('dmConvos').where('members','array-contains',currentUser.uid).orderBy('lastAt','desc').limit(30).get();
+    if(!snap.docs.length){listEl.innerHTML='<div style="padding:12px;font-size:12px;color:var(--text3)">まだDMはありません</div>';return;}
+    listEl.innerHTML=snap.docs.map(d=>{
+      const data=d.data();
+      const partner=data.members.find(m=>m!==currentUser.uid);
+      const partnerName=data.names?.[partner]||partner;
+      const lastMsg=data.lastMsg||'';
+      return `<div class="dm-user-item ${activeDmHandle===partnerName?'active':''}" onclick="openDm('${partner}','${escHtml(partnerName)}')">
+        <div class="dm-user-name">${escHtml(partnerName)}</div>
+        <div class="dm-user-preview">${escHtml(lastMsg.slice(0,30))}</div>
+      </div>`;
+    }).join('');
+  }catch(e){listEl.innerHTML='<div style="padding:12px;font-size:12px;color:var(--text3)">読み込みエラー</div>';}
+}
+
+async function startNewDm(){
+  const handle=document.getElementById('dmNewTarget')?.value?.trim();
+  if(!handle){notify('宛先ハンドル名を入力してください','err');return;}
+  try{
+    const snap=await db.collection('users').where('handle','==',handle).limit(1).get();
+    if(snap.empty){notify('ユーザーが見つかりません','err');return;}
+    const uid=snap.docs[0].id;
+    const name=snap.docs[0].data().displayName||handle;
+    document.getElementById('dmNewTarget').value='';
+    await openDm(uid,name);
+  }catch(e){notify('エラー: '+e.message,'err');}
+}
+
+async function openDm(uid,name){
+  activeDmHandle=name;activeDmUid=uid;
+  const hdr=document.getElementById('dmHeader');
+  const hdrActions=document.getElementById('dmHeaderActions');
+  if(hdr)hdr.innerHTML=`<span style="font-weight:600;color:var(--text)">${escHtml(name)}</span><div id="dmHeaderActions"><button class="report-btn" onclick="openReport('${escHtml(name)}')">⚑ 通報</button></div>`;
+  const chatId=[currentUser.uid,uid].sort().join('_');
+  if(unsubDm){unsubDm();unsubDm=null;}
+  const msgsEl=document.getElementById('dmMessages');
+  unsubDm=db.collection('dms').doc(chatId).collection('messages').orderBy('createdAt','asc').limit(100).onSnapshot(snap=>{
+    const msgs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!msgsEl)return;
+    msgsEl.innerHTML=msgs.map(m=>{
+      const isOwn=m.uid===currentUser.uid;
+      const t=m.createdAt?new Date(m.createdAt.seconds*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
+      return `<div class="dm-bubble ${isOwn?'own':'other'}"><div class="dm-text">${escHtml(m.text)}</div><div class="dm-time">${t}</div></div>`;
+    }).join('');
+    msgsEl.scrollTop=msgsEl.scrollHeight;
+  });
+}
+
+async function sendDm(){
+  const input=document.getElementById('dmInput');
+  const text=input?.value?.trim();
+  if(!text||!currentUser||!activeDmUid)return;
+  const chatId=[currentUser.uid,activeDmUid].sort().join('_');
+  try{
+    const batch=db.batch();
+    const msgRef=db.collection('dms').doc(chatId).collection('messages').doc();
+    batch.set(msgRef,{uid:currentUser.uid,displayName:currentUser.displayName||'',text,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const convoRef=db.collection('dmConvos').doc(chatId);
+    batch.set(convoRef,{members:[currentUser.uid,activeDmUid],names:{[currentUser.uid]:currentUser.displayName||'',[ activeDmUid]:activeDmHandle||''},lastMsg:text,lastAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await batch.commit();
+    input.value='';
+  }catch(e){notify('送信失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] Ranking
+// ================================================================
+async function loadRanking(){
+  const loadingEl=document.getElementById('rankingLoading');
+  const tableEl=document.getElementById('rankTable');
+  const emptyEl=document.getElementById('rankEmpty');
+  if(loadingEl)loadingEl.style.display='block';
+  if(tableEl)tableEl.style.display='none';
+  if(emptyEl)emptyEl.style.display='none';
+  if(!isFirebaseReady){if(loadingEl)loadingEl.textContent='Firebase未接続';return;}
+  try{
+    const snap=await db.collection('ranking').orderBy('totalProfit','desc').limit(50).get();
+    if(loadingEl)loadingEl.style.display='none';
+    if(snap.empty){if(emptyEl)emptyEl.style.display='block';return;}
+    if(tableEl)tableEl.style.display='table';
+    const bodyEl=document.getElementById('rankBody');
+    if(!bodyEl)return;
+    const medals=['🥇','🥈','🥉'];
+    bodyEl.innerHTML=snap.docs.map((d,i)=>{
+      const u=d.data();const isMe=currentUser&&d.id===currentUser.uid;
+      const profit=u.totalProfit||0;
+      return `<tr class="${isMe?'my-rank':''}">
+        <td style="text-align:center">${medals[i]||i+1}</td>
+        <td><b>${escHtml(u.handle||u.displayName||'匿名')}</b>${isMe?'<span style="font-size:10px;color:var(--gold);margin-left:4px">あなた</span>':''}<div style="font-size:11px;color:var(--text3)">${escHtml((u.bio||'').slice(0,20))}</div></td>
+        <td style="text-align:right;font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}¥${Math.abs(profit).toLocaleString()}</td>
+        <td style="text-align:right">${u.wr||0}%</td>
+        <td style="text-align:right">${u.count||0}</td>
+        <td>${!isMe&&currentUser?`<button class="btn-sm" style="font-size:10px" onclick="openDm('${d.id}','${escHtml(u.handle||u.displayName||'匿名')}');switchTab('dm',document.querySelector('.tab[onclick*=\'dm\']'))">DM</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
+  }catch(e){console.error('[PokerLog] loadRanking:',e);if(loadingEl)loadingEl.textContent='読み込みエラー';}
+}
+
+async function publishToRanking(){
+  if(!currentUser||!isFirebaseReady)return;
+  const jpySessions=sessions.filter(s=>s.cur==='JPY');
+  const totalProfit=jpySessions.reduce((a,s)=>a+(s.profit||0),0);
+  const wins=jpySessions.filter(s=>s.profit>0).length;
+  const wr=jpySessions.length?Math.round(wins/jpySessions.length*100):0;
+  try{
+    await db.collection('ranking').doc(currentUser.uid).set({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'',displayName:currentUser.displayName||'',bio:profile.bio||'',totalProfit,wr,count:jpySessions.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    notify('ランキングに公開しました');await loadRanking();
+  }catch(e){notify('公開失敗: '+e.message,'err');}
+}
+
+// ================================================================
+// [PokerLog] Report
+// ================================================================
+function openReport(handle){
+  document.getElementById('reportTargetLabel').textContent=`通報対象: ${handle}`;
+  document.getElementById('reportModal').classList.add('open');
+  document.getElementById('reportModal').dataset.target=handle;
+}
+async function submitReport(){
+  if(!currentUser||!isFirebaseReady)return;
+  const target=document.getElementById('reportModal').dataset.target||'';
+  const reason=document.getElementById('reportReason')?.value||'';
+  const detail=document.getElementById('reportDetail')?.value?.trim()||'';
+  try{
+    await db.collection('reports').add({reporterUid:currentUser.uid,target,reason,detail,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    document.getElementById('reportModal').classList.remove('open');
+    document.getElementById('reportDetail').value='';
+    notify('通報を送信しました');
+  }catch{notify('送信失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] Charts
+// ================================================================
+function renderCharts(){
+  if(!sessions.length){const el=document.getElementById('graphEmpty');if(el)el.style.display='block';return;}
+  const el=document.getElementById('graphEmpty');if(el)el.style.display='none';
+  renderUnifiedChart();renderBankrollChart();renderDistChart();renderGameChart();renderMonthlyChart();
+}
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+const chartOpts=(extra={})=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8ea4dd',font:{size:11}}}},scales:{x:{ticks:{color:'#8ea4dd',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}},... extra});
+
+function renderUnifiedChart(){
+  const ctx=document.getElementById('chartUnified');if(!ctx)return;destroyChart('unified');
+  const sorted=[...sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  let cum=0;
+  const data=sorted.map(s=>{cum+=(s.profitJPY??s.profit??0);return cum;});
+  charts['unified']=new Chart(ctx,{type:'line',data:{labels:sorted.map(s=>s.date),datasets:[{label:'累計収支(JPY)',data,borderColor:'#7cf7ff',backgroundColor:'rgba(124,247,255,0.07)',borderWidth:2,pointRadius:2,fill:true,tension:0.3}]},options:{...chartOpts(),scales:{x:{ticks:{color:'#8ea4dd',font:{size:9},maxRotation:45},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}},...chartOpts()}});
+}
+
+function renderBankrollChart(){
+  const ctx=document.getElementById('chartBankroll');if(!ctx)return;destroyChart('bankroll');
+  const sorted=[...sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  let cum=0;const data=sorted.map(s=>{cum+=(s.profit||0);return cum;});
+  charts['bankroll']=new Chart(ctx,{type:'line',data:{labels:sorted.map(s=>s.date),datasets:[{label:'バンクロール推移',data,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.07)',borderWidth:2,pointRadius:2,fill:true,tension:0.3}]},options:chartOpts()});
+}
+
+function renderDistChart(){
+  const ctx=document.getElementById('chartDist');if(!ctx)return;destroyChart('dist');
+  const profits=sessions.map(s=>s.profit||0);
+  const bins=[-10000,-5000,-2000,-1000,-500,0,500,1000,2000,5000,10000];
+  const counts=new Array(bins.length).fill(0);
+  profits.forEach(p=>{let i=bins.findIndex(b=>p<b);if(i<0)i=bins.length-1;counts[Math.max(0,i-1)]++;});
+  const colors=bins.map(b=>b>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
+  charts['dist']=new Chart(ctx,{type:'bar',data:{labels:bins.map((b,i)=>i===0?`<${b}`:`${bins[i-1]}~${b}`),datasets:[{label:'損益分布',data:counts,backgroundColor:colors,borderWidth:0}]},options:chartOpts()});
+}
+
+function renderGameChart(){
+  const ctx=document.getElementById('chartGame');if(!ctx)return;destroyChart('game');
+  const gm={};sessions.forEach(s=>{const g=s.game||'Other';gm[g]=(gm[g]||[]);gm[g].push(s.profit>0?1:0);});
+  const labels=Object.keys(gm);
+  const data=labels.map(g=>{const arr=gm[g];return Math.round(arr.reduce((a,v)=>a+v,0)/arr.length*100);});
+  charts['game']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'勝率(%)',data,backgroundColor:'rgba(124,247,255,0.5)',borderWidth:0}]},options:chartOpts()});
+}
+
+function renderMonthlyChart(){
+  const ctx=document.getElementById('chartMonthly');if(!ctx)return;destroyChart('monthly');
+  const mm={};sessions.forEach(s=>{const m=s.date.slice(0,7);mm[m]=(mm[m]||0)+(s.profitJPY??s.profit??0);});
+  const labels=Object.keys(mm).sort();
+  const data=labels.map(m=>mm[m]);
+  const colors=data.map(v=>v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
+  charts['monthly']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'月別損益(JPY)',data,backgroundColor:colors,borderWidth:0}]},options:{...chartOpts(),scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+}
+
+// ================================================================
+// [PokerLog] renderAll
+// ================================================================
 function renderAll(){
-  renderStats();
-  renderSessions();
-  renderTxs();
-  renderCrTxs();
-  renderExpenses();
-  renderContracts();
-  renderBalance();
-  renderAccount();
+  renderStats();renderSessions();renderBalance();renderContract();renderCost();renderAccount();
 }
 
-// ============================================================
-// [PokerLog] Init on load
-// ============================================================
+// ================================================================
+// [PokerLog] Init
+// ================================================================
 window.addEventListener('load',()=>{
-  manualRates=lsGet('manualRates',{});
-  Object.assign(rates,manualRates);
-  fetchRates();
-  // auth tab default
-  switchAuthTab('login');
-  // tab click handlers
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
+  manualRates=lsGet('manualRates',{});Object.assign(rates,manualRates);
+  // modal overlay close
+  document.querySelectorAll('.modal-overlay').forEach(ov=>{
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');});
   });
-  // auth tab click handlers
-  document.querySelectorAll('.auth-tab').forEach(btn=>{
-    btn.addEventListener('click',()=>switchAuthTab(btn.dataset.tab));
-  });
-  // BBS input enter
-  const bbsInput=document.getElementById('bbsInput');
-  if(bbsInput){
-    bbsInput.addEventListener('keydown',e=>{
-      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();postBBS();}
-    });
-  }
-  // DM input enter
-  const dmInput=document.getElementById('dmInput');
-  if(dmInput){
-    dmInput.addEventListener('keydown',e=>{
-      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendDM();}
-    });
-  }
-  // modal close on overlay click
-  document.querySelectorAll('.modal-overlay').forEach(overlay=>{
-    overlay.addEventListener('click',e=>{
-      if(e.target===overlay)overlay.classList.remove('open');
-    });
-  });
-  // default tab
-  switchTab('session');
 });
 </script>
 </body>
