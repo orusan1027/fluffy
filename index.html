@@ -1046,15 +1046,26 @@ async function runSyncTest(){
   if(btn)btn.disabled=true;
   const log=[];
   const addLog=(msg)=>{log.push(msg);res.textContent=log.join('\n');console.log('[PokerLog]',msg);};
-  addLog('Firebase ready: '+isFirebaseReady);
   addLog('Login: '+(currentUser?currentUser.email:'未ログイン'));
-  if(!currentUser||!isFirebaseReady){
+  if(!currentUser){
     res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
     if(btn)btn.disabled=false;return;
   }
-  // ネットワーク再接続
+  // Wait for Firestore to be ready (up to 15 seconds)
+  if(!isFirebaseReady){
+    addLog('Firestore読み込み中...');
+    for(let i=0;i<150&&!isFirebaseReady;i++)await new Promise(r=>setTimeout(r,100));
+  }
+  addLog('Firebase ready: '+isFirebaseReady);
+  if(!isFirebaseReady){
+    addLog('エラー: Firestoreの読み込みに失敗しました');
+    addLog('DevTools ConsoleでFirestore importエラーを確認してください');
+    res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+    if(btn)btn.disabled=false;return;
+  }
+  // Network reconnect
   try{await db.enableNetwork();addLog('ネット再接続: OK');}catch(ne){addLog('ネット再接続: '+ne.message);}
-  // SDK write test (10秒タイムアウト)
+  // SDK write test (10 second timeout)
   addLog('書き込みテスト中...');
   const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout:10秒経過')),10000));
   try{
