@@ -7,7 +7,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Noto+Serif+JP:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
 :root{
@@ -813,12 +812,57 @@ const firebaseConfig={
   measurementId:"G-EZGR97HEBY"
 };
 let isFirebaseReady=false,db,auth;
+function _fsts(){return window._fsTs?window._fsTs():null;}
 try{
   firebase.initializeApp(firebaseConfig);
-  db=firebase.firestore();
   auth=firebase.auth();
-  isFirebaseReady=true;
-  console.log('[PokerLog] Firebase ready ✓');
+  import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js').then(function(fs){
+    try{
+      const fi=fs.initializeFirestore(firebase.app(),{},'default');
+      window._fsTs=fs.serverTimestamp;
+      // compat-like wrapper for named database 'default'
+      function _D(...s){
+        const r=fs.doc(fi,...s);
+        return{_r:r,id:r.id,
+          set:(d,o)=>fs.setDoc(r,d,o||{}),
+          get:()=>fs.getDoc(r).then(sn=>({exists:sn.exists(),data:()=>sn.data(),id:sn.id})),
+          delete:()=>fs.deleteDoc(r),
+          update:(d)=>fs.updateDoc(r,d),
+          collection:(c)=>_C(...s,c),
+          onSnapshot:(cb,e)=>fs.onSnapshot(r,cb,e)};
+      }
+      function _Dauto(cr,segs){
+        const r=fs.doc(cr);
+        return{_r:r,id:r.id,
+          set:(d,o)=>fs.setDoc(r,d,o||{}),
+          get:()=>fs.getDoc(r).then(sn=>({exists:sn.exists(),data:()=>sn.data(),id:sn.id})),
+          delete:()=>fs.deleteDoc(r),
+          collection:(c)=>_C(...segs,r.id,c),
+          onSnapshot:(cb,e)=>fs.onSnapshot(r,cb,e)};
+      }
+      function _C(...s){const cr=fs.collection(fi,...s);return _Q(cr,cr,s);}
+      function _Q(q,cr,s){
+        return{
+          doc:(id)=>id?_D(...s,id):_Dauto(cr,s),
+          get:()=>fs.getDocs(q),
+          add:(d)=>fs.addDoc(cr,d),
+          where:(f,op,v)=>_Q(fs.query(q,fs.where(f,op,v)),cr,s),
+          orderBy:(f,d)=>_Q(fs.query(q,fs.orderBy(f,d||'asc')),cr,s),
+          limit:(n)=>_Q(fs.query(q,fs.limit(n)),cr,s),
+          limitToLast:(n)=>_Q(fs.query(q,fs.limitToLast(n)),cr,s),
+          onSnapshot:(cb,e)=>fs.onSnapshot(q,cb,e)};
+      }
+      db={
+        collection:(c)=>_C(c),
+        batch:()=>{const b=fs.writeBatch(fi);return{set:(w,d,o)=>b.set(w._r||w,d,o||{}),update:(w,d)=>b.update(w._r||w,d),delete:(w)=>b.delete(w._r||w.ref||w),commit:()=>b.commit()};},
+        enableNetwork:()=>fs.enableNetwork(fi),
+        disableNetwork:()=>fs.disableNetwork(fi)
+      };
+      isFirebaseReady=true;
+      updateDebugBadge('fb','⚡✓');
+      console.log('[PokerLog] Firebase+Firestore ready ✓ (db=default)');
+    }catch(e){console.error('[PokerLog] Firestore init:',e);}
+  }).catch(e=>console.error('[PokerLog] Firestore import:',e));
 }catch(e){console.error('[PokerLog] Firebase init failed:',e);}
 
 // ================================================================
@@ -1041,7 +1085,9 @@ function deleteDoc(col,id){
 // [PokerLog] Data fetch from Firestore
 // ================================================================
 async function fetchFromFirestore(){
-  if(!currentUser||!isFirebaseReady)return;
+  if(!currentUser)return;
+  if(!isFirebaseReady){for(let i=0;i<80&&!isFirebaseReady;i++)await new Promise(r=>setTimeout(r,100));}
+  if(!isFirebaseReady)return;
   const uid=currentUser.uid;
   // 10秒でタイムアウト
   const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
@@ -1103,7 +1149,7 @@ async function emailSignup(){
     user=cred.user;
     await user.updateProfile({displayName:name});
     // Firestoreへの保存はnon-blocking（接続失敗でもサインアップを止めない）
-    db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(e=>console.warn('[PokerLog] profile save:',e));
+    db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:_fsts()}).catch(e=>console.warn('[PokerLog] profile save:',e));
     fsSaved=true;
     try{await user.sendEmailVerification();}catch(ve){console.warn('[PokerLog] sendEmailVerification:',ve);}
     await auth.signOut();
@@ -1747,7 +1793,7 @@ async function addBbsPost(){
   const btn=document.getElementById('btnBbsPost');
   if(btn){btn.disabled=true;btn.textContent='投稿中...';}
   try{
-    await db.collection('bbs').add({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'匿名',displayName:currentUser.displayName||'匿名',cat,title,body,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await db.collection('bbs').add({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'匿名',displayName:currentUser.displayName||'匿名',cat,title,body,createdAt:_fsts()});
     document.getElementById('bbsNewTitle').value='';document.getElementById('bbsNewBody').value='';
     await loadBbs();notify('投稿しました');
   }catch(e){notify('投稿失敗','err');}
@@ -1825,9 +1871,9 @@ async function sendDm(){
   try{
     const batch=db.batch();
     const msgRef=db.collection('dms').doc(chatId).collection('messages').doc();
-    batch.set(msgRef,{uid:currentUser.uid,displayName:currentUser.displayName||'',text,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    batch.set(msgRef,{uid:currentUser.uid,displayName:currentUser.displayName||'',text,createdAt:_fsts()});
     const convoRef=db.collection('dmConvos').doc(chatId);
-    batch.set(convoRef,{members:[currentUser.uid,activeDmUid],names:{[currentUser.uid]:currentUser.displayName||'',[ activeDmUid]:activeDmHandle||''},lastMsg:text,lastAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    batch.set(convoRef,{members:[currentUser.uid,activeDmUid],names:{[currentUser.uid]:currentUser.displayName||'',[ activeDmUid]:activeDmHandle||''},lastMsg:text,lastAt:_fsts()},{merge:true});
     await batch.commit();
     input.value='';
   }catch(e){notify('送信失敗','err');}
@@ -1875,7 +1921,7 @@ async function publishToRanking(){
   const wins=jpySessions.filter(s=>s.profit>0).length;
   const wr=jpySessions.length?Math.round(wins/jpySessions.length*100):0;
   try{
-    await db.collection('ranking').doc(currentUser.uid).set({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'',displayName:currentUser.displayName||'',bio:profile.bio||'',totalProfit,wr,count:jpySessions.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await db.collection('ranking').doc(currentUser.uid).set({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'',displayName:currentUser.displayName||'',bio:profile.bio||'',totalProfit,wr,count:jpySessions.length,updatedAt:_fsts()});
     notify('ランキングに公開しました');await loadRanking();
   }catch(e){notify('公開失敗: '+e.message,'err');}
 }
@@ -1894,7 +1940,7 @@ async function submitReport(){
   const reason=document.getElementById('reportReason')?.value||'';
   const detail=document.getElementById('reportDetail')?.value?.trim()||'';
   try{
-    await db.collection('reports').add({reporterUid:currentUser.uid,target,reason,detail,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await db.collection('reports').add({reporterUid:currentUser.uid,target,reason,detail,createdAt:_fsts()});
     document.getElementById('reportModal').classList.remove('open');
     document.getElementById('reportDetail').value='';
     notify('通報を送信しました');
