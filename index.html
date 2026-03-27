@@ -819,7 +819,7 @@ try{
   auth=firebase.auth();
   db=firebase.firestore();
   isFirebaseReady=true;
-  updateDebugBadge('fb','⚡✓');
+  setTimeout(()=>updateDebugBadge('fb','⚡✓'),0);
   console.log('[PokerLog] Firebase+Firestore ready ✓');
 }catch(e){console.error('[PokerLog] Firebase init failed:',e);}
 
