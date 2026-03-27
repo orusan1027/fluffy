@@ -1008,28 +1008,22 @@ async function runSyncTest(){
     res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
     if(btn)btn.disabled=false;return;
   }
-  // REST API test
+  // ネットワーク再接続
+  try{await db.enableNetwork();addLog('ネット再接続: OK');}catch(ne){addLog('ネット再接続: '+ne.message);}
+  // SDK write test (10秒タイムアウト)
+  addLog('書き込みテスト中...');
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout:10秒経過')),10000));
   try{
-    const token=await currentUser.getIdToken(true);
-    addLog('Token取得: OK');
-    const url=`https://firestore.googleapis.com/v1/projects/pro-f6323/databases/(default)/documents`;
-    const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});
-    addLog('REST API: HTTP '+r.status);
-    if(!r.ok){
-      const body=await r.text();addLog('エラー: '+body.slice(0,200));
-      res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
-      if(btn)btn.disabled=false;return;
-    }
-  }catch(re){addLog('REST失敗: '+re.message);}
-  // SDK write test
-  try{
-    await db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
-      .set({ts:Date.now(),ok:true,device:navigator.userAgent.slice(0,50)},{merge:true});
-    addLog('書き込み: ✓ 成功');
+    await Promise.race([
+      db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
+        .set({ts:Date.now(),ok:true,device:navigator.userAgent.slice(0,50)},{merge:true}),
+      timeout
+    ]);
+    addLog('書き込み: ✓ 成功！');
     res.style.background='rgba(74,222,128,.1)';res.style.border='1px solid rgba(74,222,128,.3)';res.style.color='var(--green)';
     updateDebugBadge('fs','💾✓');
   }catch(e){
-    addLog('書き込み失敗: '+e.code+'\n'+e.message);
+    addLog('書き込み失敗: '+(e.code||'')+(e.code?'\n':'')+e.message);
     res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
     updateDebugBadge('fs','💾✗');
   }
