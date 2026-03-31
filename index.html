@@ -1215,7 +1215,6 @@ auth.onAuthStateChanged(async user=>{
   if(skipAuthStateCheck)return;
   if(user){
     try{await user.reload();}catch{}
-    if(!user.emailVerified){await auth.signOut();updateDebugBadge('auth','👤✗');return;}
     currentUser=user;
     updateDebugBadge('auth','👤✓');
     document.getElementById('authScreen').style.display='none';
