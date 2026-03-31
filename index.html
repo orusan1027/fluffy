@@ -1131,14 +1131,12 @@ async function emailSignup(){
     // Firestoreへの保存はnon-blocking（接続失敗でもサインアップを止めない）
     db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:_fsts()}).catch(e=>console.warn('[PokerLog] profile save:',e));
     fsSaved=true;
-    try{await user.sendEmailVerification();}catch(ve){console.warn('[PokerLog] sendEmailVerification:',ve);}
-    await auth.signOut();
-    successEl.textContent=`確認メールを ${email} に送信しました。メール内のリンクをクリックして認証を完了してください。`;
+    successEl.textContent=`登録完了！ようこそ、${name} さん`;
     successEl.style.display='block';
     document.getElementById('signupName').value='';
     document.getElementById('signupEmail').value='';
     document.getElementById('signupPass').value='';
-    setTimeout(()=>switchAuthTab('login',document.querySelector('.auth-tab')),3000);
+    setTimeout(()=>switchAuthTab('login',document.querySelector('.auth-tab')),2000);
   }catch(e){
     if(user&&!fsSaved){try{await user.delete();}catch{}}
     const msgs={'auth/email-already-in-use':'このメールアドレスはすでに登録済みです','auth/invalid-email':'メールアドレスの形式が正しくありません','auth/weak-password':'パスワードが弱すぎます（6文字以上）','auth/network-request-failed':'通信エラー','auth/too-many-requests':'しばらく経ってから再試行してください'};
@@ -1160,12 +1158,6 @@ async function emailLogin(){
   try{
     const cred=await auth.signInWithEmailAndPassword(email,pass);
     await cred.user.reload();
-    if(!cred.user.emailVerified){
-      await auth.signOut();
-      errEl.innerHTML='メールアドレスの確認が完了していません。<br>受信トレイをご確認ください。<br><button class="btn-sm" style="margin-top:8px" onclick="resendVerification()">確認メールを再送する</button>';
-      errEl.style.display='block';
-      return;
-    }
   }catch(e){
     const msgs={'auth/user-not-found':'このメールアドレスは登録されていません','auth/wrong-password':'パスワードが正しくありません','auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません','auth/invalid-email':'メールアドレスの形式が正しくありません','auth/user-disabled':'このアカウントは無効化されています','auth/too-many-requests':'しばらく経ってから再試行してください','auth/network-request-failed':'通信エラー'};
     errEl.textContent=msgs[e.code]||e.message;errEl.style.display='block';
@@ -1179,7 +1171,7 @@ async function googleLogin(){
   const provider=new firebase.auth.GoogleAuthProvider();
   try{
     const cred=await auth.signInWithPopup(provider);
-    if(!cred.user.emailVerified){await auth.signOut();notify('アカウント認証が完了していません','err');}
+    // Google accounts are always verified by Google
   }catch(e){if(e.code!=='auth/popup-closed-by-user')notify('Googleログイン失敗','err');}
 }
 
