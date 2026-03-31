@@ -1179,20 +1179,11 @@ async function googleLogin(){
 // [PokerLog] Auth — resendVerification
 // ================================================================
 async function resendVerification(){
-  const email=document.getElementById('loginEmail').value.trim();
-  const pass=document.getElementById('loginPass').value;
+  // メール認証は不要になったため、この機能は無効化
   const errEl=document.getElementById('loginErr');
-  if(!email||!pass){errEl.textContent='メールとパスワードを入力してください';errEl.style.display='block';return;}
-  skipAuthStateCheck=true;
-  try{
-    const cred=await auth.signInWithEmailAndPassword(email,pass);
-    await cred.user.reload();
-    if(cred.user.emailVerified){await auth.signOut();errEl.style.color='var(--green)';errEl.textContent='このアカウントはすでに認証済みです。ログインしてください。';errEl.style.display='block';return;}
-    await cred.user.sendEmailVerification();
-    await auth.signOut();
-    errEl.style.color='var(--green)';errEl.textContent=`確認メールを ${email} に再送しました。`;errEl.style.display='block';
-  }catch(e){errEl.style.color='';errEl.textContent=e.message;errEl.style.display='block';}
-  finally{skipAuthStateCheck=false;}
+  errEl.style.color='var(--text2)';
+  errEl.textContent='メール認証は不要です。そのままログインしてください。';
+  errEl.style.display='block';
 }
 
 // ================================================================
