@@ -553,24 +553,19 @@ body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),t
 <!-- GRAPHS PANE -->
 <div class="pane" id="paneGraphs">
   <div class="ad-slot" style="height:80px;margin-bottom:1rem" id="adGraphs"></div>
-  <div style="background:rgba(201,168,76,.06);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem">
-    <div class="chart-label" style="margin-bottom:4px">全通貨 統合JPY換算グラフ</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">各セッションをその日の為替レートでJPY換算して合算表示</div>
-    <canvas id="chartUnified" height="120"></canvas>
+  <div class="chart-wrap" style="margin-bottom:8px;padding:.75rem">
+    <div class="chart-label" style="margin-bottom:4px">統合JPY換算</div>
+    <canvas id="chartUnified" height="80"></canvas>
   </div>
-  <div class="cur-row"><span>通貨別</span><div id="curSwitcher2" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>
-  <div class="chart-wrap"><div class="chart-label">バンクロール推移</div><canvas id="chartBankroll" height="110"></canvas></div>
-  <div class="charts-grid">
-    <div class="chart-wrap" style="margin-bottom:0"><div class="chart-label">損益分布</div><canvas id="chartDist" height="130"></canvas></div>
-    <div class="chart-wrap" style="margin-bottom:0"><div class="chart-label">ゲーム別勝率</div><canvas id="chartGame" height="130"></canvas></div>
+  <div class="cur-row" style="margin-bottom:6px"><span>通貨別</span><div id="curSwitcher2" style="display:flex;gap:4px;flex-wrap:wrap"></div></div>
+  <div class="chart-wrap" style="margin-bottom:8px;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">バンクロール推移</div><canvas id="chartBankroll" height="80"></canvas></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">損益分布</div><canvas id="chartDist" height="90"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">ゲーム別勝率</div><canvas id="chartGame" height="90"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">月別損益</div><canvas id="chartMonthly" height="90"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">大会 vs キャッシュ</div><canvas id="chartTournVsCash" height="90"></canvas></div>
   </div>
-  <div style="height:8px"></div>
-  <div class="charts-grid">
-    <div class="chart-wrap" style="margin-bottom:0"><div class="chart-label">月別損益（JPY換算）</div><canvas id="chartMonthly" height="130"></canvas></div>
-    <div class="chart-wrap" style="margin-bottom:0"><div class="chart-label">大会 vs キャッシュ</div><canvas id="chartTournVsCash" height="130"></canvas></div>
-  </div>
-  <div style="height:8px"></div>
-  <div class="chart-wrap"><div class="chart-label">通貨別 JPY換算 損益</div><canvas id="chartAllCur" height="100"></canvas></div>
+  <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">通貨別損益</div><canvas id="chartAllCur" height="70"></canvas></div>
   <div class="empty" id="graphEmpty" style="display:none">セッションを追加するとグラフが表示されます</div>
 </div>
 <!-- AI PANE -->
@@ -1983,7 +1978,7 @@ window.addEventListener('load',()=>{
 });
 </script>
 <!-- admax -->
-<div style="position:fixed;bottom:0;left:0;right:0;z-index:999;text-align:center;background:rgba(11,36,22,.92);border-top:1px solid rgba(201,168,76,.2);padding:4px 0;pointer-events:auto">
+<div id="admaxWrap" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;text-align:center;background:rgba(8,14,28,.95);border-top:1px solid rgba(201,168,76,.25);padding:2px 0;min-height:52px;display:flex;align-items:center;justify-content:center">
 <script src="https://adm.shinobi.jp/s/2794572b33fdef547a0c1e94941f352d"></script>
 </div>
 <!-- /admax -->
