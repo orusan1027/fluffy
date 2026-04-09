@@ -319,7 +319,7 @@ body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),t
 .field label,.stat-label,.section-title,.chart-label,.pnl-preview-label{color:#8ea4dd}
 .btn-add,.btn-auth,.btn-ai,.dm-send{background:linear-gradient(135deg,#7cf7ff,#c8a7ff);color:#08111d;border-radius:16px;font-weight:800;box-shadow:0 16px 30px rgba(124,247,255,.20)}
 .btn-add:hover,.btn-auth:hover,.btn-ai:hover,.dm-send:hover{transform:translateY(-2px);filter:saturate(1.1)}
-.chart-wrap{border-radius:24px;padding:20px}.charts-grid{gap:14px}.bal-grid,.contract-stats,.cost-summary{gap:14px}
+.chart-wrap{border-radius:12px;padding:.5rem}.charts-grid{gap:14px}.bal-grid,.contract-stats,.cost-summary{gap:14px}
 .s-item,.bbs-post{border-radius:20px}.dm-wrap{border-radius:26px;grid-template-columns:260px 1fr}.dm-main{background:rgba(5,8,22,.44)}
 .notify{background:rgba(8,12,28,.94);border-color:rgba(124,247,255,.18);border-radius:18px}
 #debugBadge{position:fixed;bottom:8px;right:8px;z-index:9999;font-size:10px;padding:4px 8px;border-radius:8px;background:rgba(0,0,0,.75);border:1px solid rgba(124,247,255,.25);color:#8ea4dd;font-family:monospace;pointer-events:none;display:none}
@@ -556,17 +556,17 @@ body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),t
   <div class="ad-slot" style="height:80px;margin-bottom:8px" id="adGraphs"></div>
   <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem">
     <div class="chart-label" style="margin-bottom:2px;font-size:11px">統合JPY換算</div>
-    <div style="height:110px;position:relative"><canvas id="chartUnified"></canvas></div>
+    <canvas id="chartUnified" height="100" style="width:100%;height:100px"></canvas>
   </div>
   <div class="cur-row" style="margin-bottom:6px"><span>通貨別</span><div id="curSwitcher2" style="display:flex;gap:4px;flex-wrap:wrap"></div></div>
-  <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">バンクロール推移</div><div style="height:110px;position:relative"><canvas id="chartBankroll"></canvas></div></div>
+  <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">バンクロール推移</div><canvas id="chartBankroll" height="100" style="width:100%;height:100px"></canvas></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">損益分布</div><div style="height:90px;position:relative"><canvas id="chartDist"></canvas></div></div>
-    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">ゲーム別勝率</div><div style="height:90px;position:relative"><canvas id="chartGame"></canvas></div></div>
-    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">月別損益</div><div style="height:90px;position:relative"><canvas id="chartMonthly"></canvas></div></div>
-    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">大会 vs キャッシュ</div><div style="height:90px;position:relative"><canvas id="chartTournVsCash"></canvas></div></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">損益分布</div><canvas id="chartDist" height="80" style="width:100%;height:80px"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">ゲーム別勝率</div><canvas id="chartGame" height="80" style="width:100%;height:80px"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">月別損益</div><canvas id="chartMonthly" height="80" style="width:100%;height:80px"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">大会 vs キャッシュ</div><canvas id="chartTournVsCash" height="80" style="width:100%;height:80px"></canvas></div>
   </div>
-  <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">通貨別損益</div><div style="height:100px;position:relative"><canvas id="chartAllCur"></canvas></div></div>
+  <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">通貨別損益</div><canvas id="chartAllCur" height="90" style="width:100%;height:90px"></canvas></div>
   <div class="empty" id="graphEmpty" style="display:none">セッションを追加するとグラフが表示されます</div>
 </div>
 <!-- AI PANE -->
@@ -1916,7 +1916,7 @@ function renderCharts(){
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 
-const chartOpts=(extra={})=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8ea4dd',font:{size:10}}}},scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}},... extra});
+const chartOpts=(extra={})=>({responsive:false,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}},... extra});
 
 function renderUnifiedChart(){
   const ctx=document.getElementById('chartUnified');if(!ctx)return;destroyChart('unified');
