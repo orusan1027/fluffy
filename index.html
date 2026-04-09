@@ -138,8 +138,9 @@ body{font-family:'Inter','Hiragino Sans','Yu Gothic',sans-serif;background:var(-
 .filter-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold)}
 .loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--gold-border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.chart-wrap{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;}
-.chart-label{font-size:10px;color:var(--gold);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;}
+.chart-wrap{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:.5rem;margin-bottom:6px;}
+.chart-wrap canvas{display:block;max-height:110px !important;width:100% !important}
+.chart-label{font-size:10px;color:var(--gold);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
 .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .profile-banner{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;}
 .profile-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-border),transparent);}
