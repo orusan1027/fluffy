@@ -552,20 +552,20 @@ body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),t
 </div>
 <!-- GRAPHS PANE -->
 <div class="pane" id="paneGraphs">
-  <div class="ad-slot" style="height:80px;margin-bottom:1rem" id="adGraphs"></div>
-  <div class="chart-wrap" style="margin-bottom:8px;padding:.75rem">
-    <div class="chart-label" style="margin-bottom:4px">統合JPY換算</div>
-    <canvas id="chartUnified"></canvas>
+  <div class="ad-slot" style="height:80px;margin-bottom:8px" id="adGraphs"></div>
+  <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem">
+    <div class="chart-label" style="margin-bottom:2px;font-size:11px">統合JPY換算</div>
+    <div style="height:110px;position:relative"><canvas id="chartUnified"></canvas></div>
   </div>
   <div class="cur-row" style="margin-bottom:6px"><span>通貨別</span><div id="curSwitcher2" style="display:flex;gap:4px;flex-wrap:wrap"></div></div>
-  <div class="chart-wrap" style="margin-bottom:8px;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">バンクロール推移</div><canvas id="chartBankroll"></canvas></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">損益分布</div><canvas id="chartDist"></canvas></div>
-    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">ゲーム別勝率</div><canvas id="chartGame"></canvas></div>
-    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">月別損益</div><canvas id="chartMonthly"></canvas></div>
-    <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">大会 vs キャッシュ</div><canvas id="chartTournVsCash"></canvas></div>
+  <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">バンクロール推移</div><div style="height:110px;position:relative"><canvas id="chartBankroll"></canvas></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">損益分布</div><div style="height:90px;position:relative"><canvas id="chartDist"></canvas></div></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">ゲーム別勝率</div><div style="height:90px;position:relative"><canvas id="chartGame"></canvas></div></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">月別損益</div><div style="height:90px;position:relative"><canvas id="chartMonthly"></canvas></div></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">大会 vs キャッシュ</div><div style="height:90px;position:relative"><canvas id="chartTournVsCash"></canvas></div></div>
   </div>
-  <div class="chart-wrap" style="margin-bottom:0;padding:.75rem"><div class="chart-label" style="margin-bottom:4px">通貨別損益</div><canvas id="chartAllCur"></canvas></div>
+  <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">通貨別損益</div><div style="height:100px;position:relative"><canvas id="chartAllCur"></canvas></div></div>
   <div class="empty" id="graphEmpty" style="display:none">セッションを追加するとグラフが表示されます</div>
 </div>
 <!-- AI PANE -->
@@ -1915,7 +1915,7 @@ function renderCharts(){
 
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 
-const chartOpts=(extra={})=>({responsive:true,maintainAspectRatio:true,aspectRatio:4,plugins:{legend:{labels:{color:'#8ea4dd',font:{size:10}}}},scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}},... extra});
+const chartOpts=(extra={})=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8ea4dd',font:{size:10}}}},scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}},... extra});
 
 function renderUnifiedChart(){
   const ctx=document.getElementById('chartUnified');if(!ctx)return;destroyChart('unified');
@@ -1939,7 +1939,7 @@ function renderDistChart(){
   const counts=new Array(bins.length).fill(0);
   profits.forEach(p=>{let i=bins.findIndex(b=>p<b);if(i<0)i=bins.length-1;counts[Math.max(0,i-1)]++;});
   const colors=bins.map(b=>b>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
-  charts['dist']=new Chart(ctx,{type:'bar',data:{labels:bins.map((b,i)=>i===0?`<${b}`:`${bins[i-1]}~${b}`),datasets:[{label:'損益分布',data:counts,backgroundColor:colors,borderWidth:0}]},options:chartOpts({aspectRatio:2.5})});
+  charts['dist']=new Chart(ctx,{type:'bar',data:{labels:bins.map((b,i)=>i===0?`<${b}`:`${bins[i-1]}~${b}`),datasets:[{label:'損益分布',data:counts,backgroundColor:colors,borderWidth:0}]},options:chartOpts()});
 }
 
 function renderGameChart(){
@@ -1947,7 +1947,7 @@ function renderGameChart(){
   const gm={};sessions.forEach(s=>{const g=s.game||'Other';gm[g]=(gm[g]||[]);gm[g].push(s.profit>0?1:0);});
   const labels=Object.keys(gm);
   const data=labels.map(g=>{const arr=gm[g];return Math.round(arr.reduce((a,v)=>a+v,0)/arr.length*100);});
-  charts['game']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'勝率(%)',data,backgroundColor:'rgba(124,247,255,0.5)',borderWidth:0}]},options:chartOpts({aspectRatio:2.5})});
+  charts['game']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'勝率(%)',data,backgroundColor:'rgba(124,247,255,0.5)',borderWidth:0}]},options:chartOpts()});
 }
 
 function renderMonthlyChart(){
@@ -1956,7 +1956,7 @@ function renderMonthlyChart(){
   const labels=Object.keys(mm).sort();
   const data=labels.map(m=>mm[m]);
   const colors=data.map(v=>v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
-  charts['monthly']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'月別損益(JPY)',data,backgroundColor:colors,borderWidth:0}]},options:{...chartOpts({aspectRatio:2.5}),scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  charts['monthly']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'月別損益(JPY)',data,backgroundColor:colors,borderWidth:0}]},options:{...chartOpts(),scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}});
 }
 
 function renderTournVsCashChart(){
@@ -1964,14 +1964,14 @@ function renderTournVsCashChart(){
   const tourn=sessions.filter(s=>s.type==='tournament');const cash=sessions.filter(s=>s.type!=='tournament');
   const tP=tourn.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
   const cP=cash.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
-  charts['tournVsCash']=new Chart(ctx,{type:'doughnut',data:{labels:['大会','キャッシュ'],datasets:[{data:[tP,cP],backgroundColor:['rgba(201,168,76,0.7)','rgba(124,247,255,0.5)'],borderWidth:0}]},options:{...chartOpts({aspectRatio:2.5}),scales:{}}});
+  charts['tournVsCash']=new Chart(ctx,{type:'doughnut',data:{labels:['大会','キャッシュ'],datasets:[{data:[tP,cP],backgroundColor:['rgba(201,168,76,0.7)','rgba(124,247,255,0.5)'],borderWidth:0}]},options:{...chartOpts(),scales:{}}});
 }
 function renderAllCurChart(){
   const ctx=document.getElementById('chartAllCur');if(!ctx)return;destroyChart('allCur');
   const cur={};sessions.forEach(s=>{const c=s.currency||'JPY';cur[c]=(cur[c]||0)+(s.profit||0);});
   const labels=Object.keys(cur);const data=labels.map(c=>cur[c]);
   const colors=data.map(v=>v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
-  charts['allCur']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'通貨別損益',data,backgroundColor:colors,borderWidth:0}]},options:chartOpts({aspectRatio:4})});
+  charts['allCur']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'通貨別損益',data,backgroundColor:colors,borderWidth:0}]},options:chartOpts()});
 }
 
 // ================================================================
