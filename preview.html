@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Banner Preview</title>
+<style>
+body{margin:0;padding:24px;background:#050815;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
+.app{max-width:1200px;margin:0 auto}
+.note{font-size:12px;color:#8ea4dd;margin:0 0 12px;padding:8px 12px;border:1px dashed rgba(124,247,255,.25);border-radius:8px;background:rgba(124,247,255,.04)}
+.w{max-width:600px;margin:40px auto 0;padding:20px;border-top:1px dashed rgba(255,255,255,.15);font-size:11px;color:#8ea4dd}
+.w h3{color:#c9a84c;font-size:12px;letter-spacing:.2em;margin:0 0 6px}
+</style>
+</head>
+<body>
+<div class="app">
+<p class="note">⬇ これが現在の実装プレビューです。アップ前の確認用。Non'Tilt画像は `nontilt.jpg` をアップロードした後に表示されます。</p>
+
+<!-- BANNER AREA (same HTML as in index.html) -->
+<div id="adTop" class="ad-slot ad-slot-banner" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;align-items:stretch;margin:8px 0 12px;padding:0;border:none;background:none;height:auto">
+<a href="https://app.tria.so/?accessCode=WRJLEE6910" target="_blank" rel="nofollow sponsored noopener" style="display:flex;text-decoration:none;height:110px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,#050505 0%,#111111 45%,#1a1a1a 100%);border:1px solid rgba(212,175,55,.28);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06),0 0 14px rgba(212,175,55,.08);color:#fff;width:100%;box-sizing:border-box;">
+    <div>
+      <div style="font-size:10px;letter-spacing:.24em;color:#d4af37;font-weight:800;">TRIA</div>
+      <div style="font-size:18px;font-weight:900;line-height:1.1;margin-top:3px;">Elite Crypto Wallet</div>
+      <div style="font-size:12px;color:rgba(255,245,210,.78);margin-top:3px;">ハイプレイヤーに選ばれる上質な決済体験</div>
+    </div>
+    <div style="padding:9px 14px;border-radius:999px;background:linear-gradient(135deg,#f5d77a 0%,#b8891f 100%);color:#111;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35);flex-shrink:0;">登録する</div>
+  </div>
+</a>
+<a href="https://nontilt.com/" target="_blank" rel="nofollow sponsored noopener" style="display:block;height:110px;border-radius:14px;overflow:hidden;border:1px solid rgba(212,175,55,.28);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);background:#0a0a0a;">
+  <!-- 実サイトでは nontilt.jpg が表示されます -->
+  <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse,#1a5a3a 0%,#0d3a24 55%,#061c12 100%);color:#ff4c4c;font-weight:900;font-size:28px;text-shadow:0 1px 0 #000;letter-spacing:2px;">Non'Tilt</div>
+</a>
+</div>
+
+<div class="w">
+  <h3>CONFIRMED LAYOUT</h3>
+  高さ: 両バナーとも 110px 固定<br>
+  横並び: 幅が 520px 以上あれば横並び、それ以下で縦積み<br>
+  Non'Tiltは実際にはアップした <code>nontilt.jpg</code> が表示されます
+</div>
+</div>
+</body>
+</html>
