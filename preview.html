@@ -11,25 +11,23 @@ body{margin:0;padding:16px;background:#050815;font-family:-apple-system,BlinkMac
 </style>
 </head>
 <body>
-<p class="note">プレビュー確認用。Non'Tiltの画像（<code>8D1E972C-6809-40DA-856D-F6572B2EB0E8.jpg</code>）は同フォルダに置いた場合のみ表示されます。</p>
+<p class="note">プレビュー確認用。<code>8D1E972C-6809-40DA-856D-F6572B2EB0E8.jpg</code> を同フォルダに置くと画像が表示されます。</p>
 
-<!-- ▼ index.html と同一のバナーHTML ▼ -->
-<div id="adTop" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;align-items:stretch;margin:8px 0 12px;">
-<a href="https://app.tria.so/?accessCode=WRJLEE6910" target="_blank" rel="nofollow sponsored noopener" style="display:flex;text-decoration:none;">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,#050505 0%,#111111 45%,#1a1a1a 100%);border:1px solid rgba(212,175,55,.28);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06),0 0 14px rgba(212,175,55,.08);color:#fff;width:100%;flex:1;box-sizing:border-box;">
-    <div>
-      <div style="font-size:10px;letter-spacing:.24em;color:#d4af37;font-weight:800;">TRIA</div>
-      <div style="font-size:18px;font-weight:900;line-height:1.1;margin-top:3px;">Elite Crypto Wallet</div>
-      <div style="font-size:12px;color:rgba(255,245,210,.78);margin-top:3px;">ハイプレイヤーに選ばれる上質な決済体験</div>
-    </div>
-    <div style="padding:9px 14px;border-radius:999px;background:linear-gradient(135deg,#f5d77a 0%,#b8891f 100%);color:#111;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35);flex-shrink:0;">登録する</div>
+<div id="adTop" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 12px;">
+<a href="https://app.tria.so/?accessCode=WRJLEE6910" target="_blank" rel="nofollow sponsored noopener" style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:80px;padding:0 16px;border-radius:12px;background:linear-gradient(135deg,#050505 0%,#111111 45%,#1a1a1a 100%);border:1px solid rgba(212,175,55,.28);box-shadow:0 4px 16px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06);color:#fff;text-decoration:none;overflow:hidden;">
+  <div style="min-width:0;">
+    <div style="font-size:9px;letter-spacing:.22em;color:#d4af37;font-weight:800;">TRIA</div>
+    <div style="font-size:15px;font-weight:900;line-height:1.15;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Elite Crypto Wallet</div>
+    <div style="font-size:11px;color:rgba(255,245,210,.75);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ハイプレイヤーに選ばれる上質な決済体験</div>
   </div>
+  <div style="flex-shrink:0;padding:7px 13px;border-radius:999px;background:linear-gradient(135deg,#f5d77a 0%,#b8891f 100%);color:#111;font-size:11px;font-weight:900;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35);">登録する</div>
 </a>
-<a href="https://nontilt.com/" target="_blank" rel="noopener noreferrer" style="display:block;border-radius:14px;overflow:hidden;line-height:0;transition:opacity .3s ease;" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
-  <img src="8D1E972C-6809-40DA-856D-F6572B2EB0E8.jpg" alt="Non'Tilt - 全国送料無料 一箱10本入り" style="width:100%;height:auto;display:block;image-rendering:-webkit-optimize-contrast;">
+<!-- Non'Tilt: 画像なしの場合はプレースホルダー表示 -->
+<a href="https://nontilt.com/" target="_blank" rel="noopener noreferrer" style="display:block;height:80px;border-radius:12px;overflow:hidden;line-height:0;transition:opacity .3s ease;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+  <img src="8D1E972C-6809-40DA-856D-F6572B2EB0E8.jpg" alt="Non'Tilt" style="width:100%;height:80px;object-fit:cover;object-position:center top;display:block;" onerror="this.parentNode.style.background='radial-gradient(ellipse,#1a5a3a,#061c12)';this.parentNode.innerHTML='<div style=\'width:100%;height:80px;display:flex;align-items:center;justify-content:center;color:#ff4c4c;font-weight:900;font-size:22px;\'>Non\'Tilt</div>'">
 </a>
 </div>
-<!-- ▲ ここまで ▲ -->
 
+<p style="font-size:11px;color:#8ea4dd;margin-top:12px;">両バナー高さ: 80px 固定 / 左右1:1グリッド / モバイルでは縦積み</p>
 </body>
 </html>
