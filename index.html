@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>♠ PokerLog — プロのための収支管理</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Noto+Serif+JP:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
+:root{
+  --felt:#0b2416;--felt2:#0f2d1c;--felt3:#143522;--felt4:#1a3e2a;
+  --gold:#c9a84c;--gold2:#e8c96a;--gold3:#a0803a;
+  --gold-dim:rgba(201,168,76,0.15);--gold-border:rgba(201,168,76,0.35);
+  --text:#f5ead8;--text2:#c4b89a;--text3:#7a6e58;
+  --green:#4ade80;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa;
+  --radius:10px;--radius-sm:6px;--radius-lg:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Hiragino Sans','Yu Gothic',sans-serif;background:var(--felt);color:var(--text);min-height:100vh;background-image:radial-gradient(ellipse at 20% 0%,rgba(201,168,76,0.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 100%,rgba(201,168,76,0.04) 0%,transparent 60%);}
+.ad-slot{display:none;border:1px solid var(--gold-border);border-radius:var(--radius-sm);background:rgba(201,168,76,0.05);text-align:center;color:var(--text3);font-size:11px;padding:8px;letter-spacing:.5px}
+.ad-slot-banner{height:60px;margin-bottom:1rem}
+.app{max-width:800px;margin:0 auto;padding:1.5rem 1rem 7rem}
+#authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background-image:radial-gradient(ellipse at 50% 0%,rgba(201,168,76,0.12) 0%,transparent 70%);}
+.auth-box{background:var(--felt2);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:2.5rem 2rem;width:100%;max-width:420px;box-shadow:0 0 60px rgba(201,168,76,0.08),0 24px 48px rgba(0,0,0,0.4);position:relative;overflow:hidden;}
+.auth-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.auth-logo{text-align:center;margin-bottom:.5rem;font-family:'Playfair Display',serif;font-size:32px;font-weight:700;letter-spacing:2px;color:var(--gold);text-shadow:0 0 30px rgba(201,168,76,0.4);}
+.auth-logo .suit{color:var(--red)}
+.auth-tagline{text-align:center;font-size:12px;color:var(--text3);margin-bottom:2rem;letter-spacing:1px;text-transform:uppercase}
+.auth-tabs{display:flex;border-bottom:1px solid var(--gold-border);margin-bottom:1.5rem}
+.auth-tab{flex:1;font-size:13px;padding:9px;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;letter-spacing:.5px}
+.auth-tab.active{color:var(--gold);font-weight:600;border-bottom-color:var(--gold)}
+.auth-form{display:flex;flex-direction:column;gap:10px}
+.auth-input{font-size:13px;padding:11px 14px;border:1px solid rgba(201,168,76,0.25);border-radius:var(--radius-sm);background:rgba(0,0,0,0.3);color:var(--text);font-family:inherit;width:100%;transition:border .15s;}
+.auth-input:focus{outline:none;border-color:var(--gold)}
+.auth-input::placeholder{color:var(--text3)}
+.btn-auth{padding:13px;font-size:14px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,var(--gold3),var(--gold));border:none;border-radius:var(--radius-sm);color:#0b1a0e;letter-spacing:.5px;transition:all .15s;}
+.btn-auth:hover{background:linear-gradient(135deg,var(--gold),var(--gold2));transform:translateY(-1px)}
+.btn-auth:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-google{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--text);display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-google:hover{background:rgba(255,255,255,0.1);transform:translateY(-1px)}
+.auth-divider{text-align:center;font-size:11px;color:var(--text3);position:relative;margin:.5rem 0}
+.auth-divider:before,.auth-divider:after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--gold-border)}
+.auth-divider:before{left:0}.auth-divider:after{right:0}
+.auth-err{font-size:12px;color:var(--red);text-align:center;padding:8px;background:rgba(248,113,113,.1);border-radius:var(--radius-sm);border:1px solid rgba(248,113,113,.2);display:none}
+.top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--gold-border);}
+.site-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;letter-spacing:2px;color:var(--gold);text-shadow:0 0 20px rgba(201,168,76,0.3);display:flex;align-items:center;gap:8px;}
+.site-title .suit{color:var(--red)}
+.user-pill{display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(201,168,76,0.08);border:1px solid var(--gold-border);border-radius:20px;font-size:12px;color:var(--text2);}
+.avatar-sm{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold3),var(--gold));color:#0b1a0e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.btn-logout{background:none;border:1px solid rgba(201,168,76,0.2);color:var(--text3);font-size:11px;padding:3px 9px;cursor:pointer;border-radius:20px;transition:all .15s;font-family:inherit;}
+.btn-logout:hover{color:var(--red);border-color:rgba(248,113,113,.4)}
+.rate-bar{background:rgba(0,0,0,0.25);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:7px 14px;margin-bottom:1.25rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.rate-bar>span{font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.rate-item{font-size:11px;color:var(--text2);padding:2px 8px;background:rgba(201,168,76,0.08);border-radius:20px;border:1px solid var(--gold-border);}
+.rate-item b{color:var(--gold);margin-left:2px}
+.rate-status{font-size:10px;margin-left:auto}
+.rate-status.ok{color:var(--green)}.rate-status.err{color:var(--red)}.rate-status.loading{color:var(--amber)}
+.tabs{display:flex;border-bottom:1px solid var(--gold-border);margin-bottom:1.5rem;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-size:12px;padding:9px 13px;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .15s;letter-spacing:.4px;}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--gold);font-weight:600;border-bottom-color:var(--gold)}
+.pane{display:none}.pane.active{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:1.5rem}
+.stat{background:rgba(0,0,0,0.25);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1rem;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-border),transparent);}
+.stat-label{font-size:10px;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px}
+.stat-value{font-size:22px;font-weight:700;font-family:'Playfair Display',serif}
+.stat-value.pos{color:var(--green)}.stat-value.neg{color:var(--red)}.stat-value.warn{color:var(--amber)}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.cur-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.cur-row>span{font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.cur-btn{font-size:11px;padding:4px 12px;cursor:pointer;border:1px solid var(--gold-border);border-radius:20px;background:transparent;color:var(--text3);transition:all .15s;font-family:inherit;}
+.cur-btn.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);font-weight:600}
+.section-title{font-size:11px;font-weight:600;color:var(--gold);margin-bottom:10px;margin-top:1.5rem;text-transform:uppercase;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--gold-border)}
+.form-card{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;position:relative;overflow:hidden;}
+.form-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-border),transparent);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-row.four{grid-template-columns:1fr 1fr 1fr 1fr}
+.field label{display:block;font-size:10px;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;}
+.field input,.field select,.field textarea{width:100%;font-size:13px;padding:9px 11px;border:1px solid rgba(201,168,76,0.2);border-radius:var(--radius-sm);background:rgba(0,0,0,0.3);color:var(--text);font-family:inherit;transition:border .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field select{cursor:pointer;appearance:none}
+.field textarea{resize:vertical;min-height:48px}
+.linked-section{background:rgba(201,168,76,0.04);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;}
+.linked-title{font-size:11px;font-weight:600;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px;letter-spacing:.5px}
+.linked-title .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block}
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.toggle{position:relative;width:34px;height:18px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:rgba(0,0,0,0.4);border:1px solid var(--gold-border);border-radius:9px;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:13px;height:13px;left:2px;bottom:2px;background:var(--text3);border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--gold-dim);border-color:var(--gold)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px);background:var(--gold)}
+.toggle-label{font-size:12px;color:var(--text2);cursor:pointer}
+.buyin-source{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.source-btn{font-size:11px;padding:5px 12px;cursor:pointer;border:1px solid var(--gold-border);border-radius:20px;background:transparent;color:var(--text3);transition:all .15s;font-family:inherit;}
+.source-btn.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);font-weight:600}
+.btn-add{width:100%;padding:12px;font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,var(--gold3),var(--gold));border:none;border-radius:var(--radius-sm);color:#0b1a0e;margin-top:4px;transition:all .15s;letter-spacing:.5px;font-family:inherit;}
+.btn-add:hover{background:linear-gradient(135deg,var(--gold),var(--gold2));transform:translateY(-1px)}
+.btn-add:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sm{font-size:12px;padding:6px 13px;cursor:pointer;border:1px solid var(--gold-border);border-radius:var(--radius-sm);background:rgba(201,168,76,0.08);color:var(--text2);transition:all .15s;font-family:inherit;}
+.btn-sm:hover{border-color:var(--gold);color:var(--gold)}
+.btn-primary{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.btn-primary:hover{background:rgba(201,168,76,0.25)}
+.btn-danger{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:var(--red)}
+.btn-twitter{background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,.15);color:var(--text);display:flex;align-items:center;gap:6px}
+.item-list{display:flex;flex-direction:column;gap:8px}
+.s-item{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1rem 1.25rem;transition:border-color .15s;}
+.s-item:hover{border-color:rgba(201,168,76,0.5)}
+.s-top{display:flex;align-items:flex-start;gap:8px}
+.s-info{flex:1;min-width:0}
+.s-game{font-size:14px;font-weight:600;color:var(--text);font-family:'Playfair Display',serif}
+.s-meta{font-size:11px;color:var(--text3);margin-top:3px}
+.s-links{font-size:10px;margin-top:3px;display:flex;gap:5px;flex-wrap:wrap}
+.s-link-tag{padding:1px 7px;border-radius:3px;border:1px solid}
+.s-link-tag.contract{color:var(--gold);border-color:var(--gold-border);background:var(--gold-dim)}
+.s-link-tag.expense{color:var(--amber);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.1)}
+.s-link-tag.balance{color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1)}
+.s-pnl{font-size:18px;font-weight:700;min-width:95px;text-align:right;font-family:'Playfair Display',serif}
+.s-pnl.pos{color:var(--green)}.s-pnl.neg{color:var(--red)}
+.s-jpy{font-size:11px;text-align:right;color:var(--text3);margin-top:1px}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:4px;opacity:.3;border-radius:4px}
+.btn-del:hover{opacity:1;color:var(--red)}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-right:2px}
+.tourn-badge{display:inline-block;font-size:10px;padding:2px 9px;border-radius:20px;background:var(--gold-dim);color:var(--gold);font-weight:600;margin-right:2px;border:1px solid var(--gold-border)}
+.venue-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text2)}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px;line-height:2.5;border:1px dashed rgba(201,168,76,.15);border-radius:var(--radius)}
+.filter-row{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.filter-btn{font-size:11px;padding:5px 12px;cursor:pointer;border:1px solid var(--gold-border);border-radius:20px;background:transparent;color:var(--text3);transition:all .15s;font-family:inherit}
+.filter-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold)}
+.loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--gold-border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chart-wrap{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:.5rem;margin-bottom:6px;}
+.chart-wrap canvas{display:block;max-height:110px !important;width:100% !important}
+.chart-label{font-size:10px;color:var(--gold);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.profile-banner{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;}
+.profile-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-border),transparent);}
+.avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--gold3),var(--gold));color:#0b1a0e;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;box-shadow:0 0 16px rgba(201,168,76,0.3);font-family:'Playfair Display',serif;}
+.tx-item{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(201,168,76,.1)}
+.tx-item:last-child{border-bottom:none}
+.tx-type-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap;border:1px solid}
+.tx-info{flex:1;min-width:0}
+.tx-name{font-size:13px;font-weight:500;color:var(--text)}
+.tx-date{font-size:11px;color:var(--text3)}
+.tx-amount{font-size:13px;font-weight:700;text-align:right;white-space:nowrap}
+.tx-amount.pos{color:var(--green)}.tx-amount.neg{color:var(--red)}.tx-amount.fee{color:var(--amber)}
+.tx-auto{font-size:10px;color:var(--gold);margin-left:4px}
+.bbs-categories{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.bbs-cat-btn{font-size:11px;padding:5px 13px;cursor:pointer;border:1px solid var(--gold-border);border-radius:20px;background:transparent;color:var(--text3);transition:all .15s;font-family:inherit}
+.bbs-cat-btn.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);font-weight:600}
+.bbs-post{background:rgba(0,0,0,.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.1rem 1.25rem;margin-bottom:8px;transition:border-color .15s}
+.bbs-post:hover{border-color:rgba(201,168,76,.5)}
+.bbs-post-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.bbs-author{font-size:13px;font-weight:600;color:var(--gold);font-family:'Playfair Display',serif}
+.bbs-cat-tag{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid var(--gold-border);color:var(--gold);background:var(--gold-dim)}
+.bbs-time{font-size:11px;color:var(--text3);margin-left:auto}
+.bbs-title{font-size:15px;font-weight:700;color:var(--text);font-family:'Playfair Display',serif;margin-bottom:4px;cursor:pointer}
+.bbs-title:hover{color:var(--gold)}
+.bbs-body{font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-wrap}
+.bbs-footer{display:flex;align-items:center;gap:12px;margin-top:10px}
+.bbs-like-btn{background:none;border:1px solid var(--gold-border);color:var(--text3);font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;transition:all .15s;font-family:inherit;display:flex;align-items:center;gap:4px}
+.bbs-like-btn:hover,.bbs-like-btn.liked{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.bbs-reply-btn{background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:20px;transition:all .15s}
+.bbs-reply-btn:hover{color:var(--gold);background:var(--gold-dim)}
+.bbs-replies{margin-top:10px;padding-top:10px;border-top:1px solid rgba(201,168,76,.1);display:flex;flex-direction:column;gap:8px}
+.bbs-reply{background:rgba(201,168,76,.04);border-radius:var(--radius-sm);padding:9px 12px;border-left:2px solid var(--gold-border)}
+.bbs-reply-author{font-size:11px;font-weight:600;color:var(--gold);margin-bottom:3px}
+.bbs-reply-body{font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap}
+.bbs-reply-time{font-size:10px;color:var(--text3);margin-top:2px}
+.bbs-new-reply{margin-top:10px;display:none}
+.bbs-new-reply.open{display:block}
+.bbs-reply-input{width:100%;font-size:13px;padding:9px 11px;border:1px solid var(--gold-border);border-radius:var(--radius-sm);background:rgba(0,0,0,.3);color:var(--text);font-family:inherit;resize:vertical;min-height:70px;transition:border .15s}
+.bbs-reply-input:focus{outline:none;border-color:var(--gold)}
+.bbs-new-form{background:rgba(0,0,0,.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem}
+.bbs-realtime-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem}
+.bal-card{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.25rem;}
+.bal-amount{font-size:26px;font-weight:700;margin:8px 0 2px;font-family:'Playfair Display',serif}
+.bal-sub{font-size:11px;color:var(--text3)}
+.bal-jpy{font-size:12px;color:var(--gold);margin-top:5px;font-weight:500}
+.contract-box{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;}
+.contract-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.c-stat{text-align:center;padding:12px;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);border:1px solid rgba(201,168,76,.1)}
+.c-stat-label{font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px}
+.c-stat-val{font-size:18px;font-weight:700;font-family:'Playfair Display',serif}
+.progress-bar{height:4px;background:rgba(0,0,0,0.3);border-radius:2px;margin-top:16px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;transition:width .4s}
+.rank-table{width:100%;border-collapse:collapse}
+.rank-table th{font-size:10px;color:var(--gold);font-weight:600;padding:10px 14px;text-align:left;border-bottom:1px solid var(--gold-border);text-transform:uppercase;letter-spacing:.8px}
+.rank-table td{font-size:13px;padding:12px 14px;border-bottom:1px solid rgba(201,168,76,.08);color:var(--text);vertical-align:middle}
+.rank-table tr:last-child td{border-bottom:none}
+.rank-table tr:hover td{background:rgba(201,168,76,.04)}
+.rank-me td{background:rgba(201,168,76,.06)!important}
+.report-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:3px 7px;border-radius:4px;opacity:.4;transition:all .15s}
+.report-btn:hover{opacity:1;color:var(--red)}
+.dm-wrap{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);overflow:hidden;display:grid;grid-template-columns:175px 1fr;min-height:460px;}
+.dm-side{border-right:1px solid var(--gold-border);display:flex;flex-direction:column}
+.dm-side-hdr{padding:12px 14px;font-size:11px;font-weight:600;color:var(--gold);border-bottom:1px solid var(--gold-border);display:flex;justify-content:space-between;align-items:center;text-transform:uppercase;letter-spacing:.8px;}
+.dm-user-item{padding:11px 14px;cursor:pointer;border-bottom:1px solid rgba(201,168,76,.08);transition:background .1s}
+.dm-user-item:hover,.dm-user-item.active{background:rgba(201,168,76,.06)}
+.dm-user-name{font-size:12px;font-weight:600;color:var(--text)}
+.dm-preview{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-new-area{padding:10px;margin-top:auto;border-top:1px solid var(--gold-border)}
+.dm-new-input{width:100%;font-size:12px;padding:7px 9px;border:1px solid var(--gold-border);border-radius:var(--radius-sm);background:rgba(0,0,0,0.3);color:var(--text);font-family:inherit;margin-bottom:6px}
+.dm-main{display:flex;flex-direction:column;background:rgba(0,0,0,0.1)}
+.dm-hdr{padding:12px 16px;border-bottom:1px solid var(--gold-border);font-size:13px;font-weight:600;min-height:44px;display:flex;align-items:center;justify-content:space-between;color:var(--text)}
+.dm-msgs{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;min-height:310px;max-height:310px}
+.dm-msg{max-width:78%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+.dm-msg.mine{align-self:flex-end;background:linear-gradient(135deg,var(--gold3),rgba(201,168,76,.7));color:#0b1a0e;border-bottom-right-radius:4px;font-weight:500}
+.dm-msg.theirs{align-self:flex-start;background:rgba(255,255,255,.06);border:1px solid rgba(201,168,76,.15);border-bottom-left-radius:4px}
+.dm-msg-time{font-size:10px;color:var(--text3);margin-top:2px}
+.dm-msg.mine .dm-msg-time{text-align:right;color:rgba(11,26,14,.6)}
+.dm-input-row{padding:10px 12px;border-top:1px solid var(--gold-border);display:flex;gap:8px;align-items:center}
+.dm-input{flex:1;font-size:13px;padding:9px 12px;border:1px solid var(--gold-border);border-radius:var(--radius-sm);background:rgba(0,0,0,0.3);color:var(--text);font-family:inherit}
+.dm-input:focus{outline:none;border-color:var(--gold)}
+.dm-input::placeholder{color:var(--text3)}
+.dm-send{padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,var(--gold3),var(--gold));border:none;border-radius:var(--radius-sm);color:#0b1a0e;font-family:inherit}
+.ai-panel{background:rgba(0,0,0,0.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem;}
+.score-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.score-card{background:rgba(0,0,0,0.3);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:14px;text-align:center;}
+.score-label{font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.score-val{font-size:28px;font-weight:800;font-family:'Playfair Display',serif}
+.score-val.s-A{color:var(--green)}.score-val.s-B{color:var(--blue)}.score-val.s-C{color:var(--amber)}.score-val.s-D{color:var(--red)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--felt2);border:1px solid var(--gold-border);border-radius:var(--radius-lg);padding:1.75rem;width:400px;max-width:95vw;box-shadow:0 0 60px rgba(201,168,76,.1),0 24px 48px rgba(0,0,0,.6);position:relative;overflow:hidden;}
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:.75rem;font-family:'Playfair Display',serif;color:var(--gold)}
+.cost-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.notify{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--felt2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:12px 18px;font-size:13px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 20px rgba(201,168,76,.1);transform:translateY(140%);transition:transform .3s;z-index:500;max-width:300px;}
+.notify.show{transform:translateY(0)}
+.notify.ok{border-left:3px solid var(--green)}.notify.warn{border-left:3px solid var(--amber)}.notify.err{border-left:3px solid var(--red)}
+.backup-card{background:rgba(0,0,0,.2);border:1px solid var(--gold-border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem}
+.backup-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(201,168,76,.08);font-size:13px}
+.backup-row:last-child{border-bottom:none}
+.backup-label{color:var(--text2)}
+.backup-val{color:var(--green);font-weight:600}
+.pnl-preview{display:none;background:rgba(201,168,76,.06);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:9px 13px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+.pnl-preview-label{color:var(--text3);letter-spacing:.5px;text-transform:uppercase;font-size:10px}
+.ornament{text-align:center;color:var(--gold);font-size:18px;letter-spacing:8px;margin:1rem 0;opacity:.4}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap');
+:root{--felt:#060816;--felt2:rgba(11,16,34,0.78);--felt3:#0d1330;--felt4:#121a3f;--gold:#7cf7ff;--gold2:#d5a9ff;--gold3:#2fb8ff;--gold-dim:rgba(124,247,255,.12);--gold-border:rgba(124,247,255,.24);--text:#eef8ff;--text2:#b4c4f2;--text3:#6e83ba;--green:#59ffa8;--red:#ff6b9f;--amber:#ffd166;--blue:#71a8ff;--radius:18px;--radius-sm:12px;--radius-lg:28px;}
+html,body{background:#050816}
+body{position:relative;overflow-x:hidden;background-image:radial-gradient(circle at 15% 15%,rgba(70,120,255,.18),transparent 24%),radial-gradient(circle at 85% 10%,rgba(170,95,255,.16),transparent 22%),radial-gradient(circle at 50% 100%,rgba(45,220,255,.12),transparent 28%),linear-gradient(180deg,#040611 0%,#080b1c 42%,#060816 100%);}
+body::before,body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0}
+body::before{background:linear-gradient(rgba(112,145,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(112,145,255,.08) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(180deg,rgba(0,0,0,.9),rgba(0,0,0,.35));opacity:.32}
+body::after{background:radial-gradient(circle at 20% 25%,rgba(124,247,255,.10),transparent 0 22%),radial-gradient(circle at 80% 18%,rgba(213,169,255,.10),transparent 0 18%),linear-gradient(180deg,transparent,rgba(124,247,255,.06),transparent);filter:blur(18px);animation:floatGlow 12s ease-in-out infinite alternate}
+@keyframes floatGlow{from{transform:translateY(-20px)}to{transform:translateY(20px)}}
+.app,#authScreen{position:relative;z-index:1}
+.app{max-width:1320px;padding:1.5rem 1.2rem 6rem}
+#mainApp{position:relative}
+#mainApp::before{content:'';position:fixed;top:-20vh;left:-10vw;width:60vw;height:60vw;border-radius:50%;background:radial-gradient(circle,rgba(65,111,255,.14),transparent 60%);filter:blur(30px);pointer-events:none;z-index:0}
+#mainApp::after{content:'';position:fixed;right:-8vw;bottom:-18vh;width:50vw;height:50vw;border-radius:50%;background:radial-gradient(circle,rgba(180,92,255,.14),transparent 60%);filter:blur(40px);pointer-events:none;z-index:0}
+.auth-box,.form-card,.stat,.chart-wrap,.profile-banner,.bal-card,.contract-box,.backup-card,.ai-panel,.bbs-new-form,.bbs-post,.dm-wrap,.modal,.linked-section,.s-item,.rate-bar{background:linear-gradient(180deg,rgba(12,18,39,.9),rgba(8,12,28,.82));border:1px solid rgba(124,247,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 18px 42px rgba(0,0,0,.35),0 0 0 1px rgba(124,247,255,.04);backdrop-filter:blur(16px);}
+.auth-box::before,.form-card::before,.profile-banner::before,.stat::before{height:2px;background:linear-gradient(90deg,transparent,rgba(124,247,255,.9),rgba(213,169,255,.8),transparent)}
+.site-title,.auth-logo,.section-title,.chart-label,.linked-title,.modal-title,.bbs-author,.bbs-title{font-family:'Orbitron','Inter',sans-serif;letter-spacing:.08em}
+.site-title{font-size:28px;text-transform:uppercase;color:#eef8ff;text-shadow:0 0 12px rgba(124,247,255,.32)}
+.site-title .suit,.auth-logo .suit{color:#ff82b0}
+.top-bar{position:sticky;top:10px;z-index:20;padding:1rem 1.2rem;margin-bottom:1rem;border:1px solid rgba(124,247,255,.18);border-radius:24px;background:rgba(7,11,26,.75);backdrop-filter:blur(18px);box-shadow:0 16px 34px rgba(0,0,0,.28)}
+.user-pill{padding:7px 14px;border-radius:999px;background:rgba(124,247,255,.08)}
+.avatar-sm,.avatar,.ai-icon{background:linear-gradient(135deg,#6de4ff,#c08bff);box-shadow:0 0 18px rgba(124,247,255,.35)}
+.rate-bar{padding:12px 16px;border-radius:20px;gap:10px;position:relative;overflow:hidden}
+.rate-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(124,247,255,.04),transparent);pointer-events:none}
+.rate-item,.cur-btn,.source-btn,.filter-btn,.bbs-cat-btn,.btn-sm,.tab{border-color:rgba(124,247,255,.20);background:rgba(124,247,255,.04);color:var(--text2)}
+.tab{padding:12px 16px;border-bottom:none;border-radius:14px 14px 0 0;background:transparent;position:relative}
+.tab.active{color:#08111d;background:linear-gradient(135deg,#7cf7ff,#cda3ff);box-shadow:0 10px 28px rgba(124,247,255,.22);font-weight:800}
+.tabs{position:sticky;top:92px;z-index:18;padding:8px;background:rgba(8,12,28,.72);backdrop-filter:blur(16px);border:1px solid rgba(124,247,255,.12);border-radius:18px;margin-bottom:1.25rem}
+.hero-shell{position:relative;overflow:hidden;border:1px solid rgba(124,247,255,.18);border-radius:32px;padding:30px;margin:0 0 1rem;background:linear-gradient(140deg,rgba(13,19,48,.90),rgba(7,11,26,.86) 60%),radial-gradient(circle at top right,rgba(124,247,255,.16),transparent 35%);box-shadow:0 24px 60px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.06)}
+.hero-shell::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(124,247,255,.10) 48%,transparent 52%,transparent 100%);transform:translateX(-100%);animation:scan 9s linear infinite}
+@keyframes scan{to{transform:translateX(100%)}}
+.hero-shell::after{content:'';position:absolute;inset:14px;border:1px solid rgba(124,247,255,.10);border-radius:24px;pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:22px;align-items:stretch;position:relative;z-index:1}
+.hero-kicker{display:inline-flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;border:1px solid rgba(124,247,255,.18);background:rgba(124,247,255,.07);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9fdcff;margin-bottom:16px}
+.hero-title{font-family:'Orbitron','Inter',sans-serif;font-size:clamp(30px,4vw,52px);line-height:1.02;letter-spacing:.04em;color:#f7fbff;text-transform:uppercase;text-shadow:0 0 28px rgba(124,247,255,.18);max-width:9.5em}
+.hero-title .accent{background:linear-gradient(135deg,#7cf7ff,#d5a9ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-copy{margin-top:16px;max-width:600px;font-size:14px;line-height:1.9;color:var(--text2)}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.hero-btn{appearance:none;border:none;border-radius:14px;padding:12px 16px;font:600 12px/1 'Inter',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.hero-btn.primary{background:linear-gradient(135deg,#7cf7ff,#c8a7ff);color:#07131d;box-shadow:0 14px 30px rgba(124,247,255,.24)}
+.hero-btn.ghost{background:rgba(124,247,255,.06);color:var(--text);border:1px solid rgba(124,247,255,.18)}
+.hero-side{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hero-card{position:relative;padding:18px;border-radius:22px;background:linear-gradient(180deg,rgba(14,23,54,.9),rgba(8,14,33,.82));border:1px solid rgba(124,247,255,.14);overflow:hidden;min-height:128px}
+.hero-card::before{content:'';position:absolute;top:-25%;right:-10%;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(124,247,255,.16),transparent 65%)}
+.hero-label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8ea4dd;margin-bottom:10px}
+.hero-value{font-family:'Orbitron','Inter',sans-serif;font-size:28px;font-weight:800;color:#f4f9ff}
+.hero-value.pos{color:#59ffa8}.hero-value.neg{color:#ff7ca8}
+.hero-note{margin-top:10px;font-size:12px;color:var(--text3);line-height:1.6}
+.hero-card.wide{grid-column:span 2;display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.hero-mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}
+.hero-mini{padding:12px 14px;border-radius:16px;background:rgba(124,247,255,.05);border:1px solid rgba(124,247,255,.12)}
+.hero-mini .k{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:#7e94cd}.hero-mini .v{margin-top:8px;font-size:15px;font-weight:700;color:#eaf6ff}
+#paneSession{display:grid;grid-template-columns:minmax(0,1.08fr) 360px;gap:18px;align-items:start}
+#paneSession>.profile-banner,#paneSession>.cur-row,#paneSession>.stats-grid,#paneSession>.section-title,#paneSession>.form-card,#paneSession>div[style*="text-align:center;margin:1rem 0"],#paneSession>#histSection{grid-column:1}
+.session-side-panel{grid-column:2;grid-row:1 / span 7;display:flex;flex-direction:column;gap:16px;position:sticky;top:154px}
+.cyber-panel{padding:18px;border-radius:22px;background:linear-gradient(180deg,rgba(11,18,43,.9),rgba(7,11,26,.86));border:1px solid rgba(124,247,255,.14);box-shadow:0 16px 32px rgba(0,0,0,.24)}
+.cyber-panel-title{font-family:'Orbitron','Inter',sans-serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9fdcff;margin-bottom:12px}
+.quick-links{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quick-link{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:16px;text-decoration:none;background:rgba(124,247,255,.05);border:1px solid rgba(124,247,255,.12);color:var(--text)}
+.quick-link b{font-size:13px}.quick-link span{font-size:11px;color:var(--text3);line-height:1.6}
+.cyber-list{display:flex;flex-direction:column;gap:10px}
+.cyber-list-item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(124,247,255,.08);font-size:12px}
+.cyber-list-item:last-child{border-bottom:none}
+.cyber-list-item span{color:var(--text3)}.cyber-list-item b{color:#ebf6ff;text-align:right}
+.profile-banner{padding:18px 22px;border-radius:24px;align-items:center}
+.stats-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.stat{padding:18px;border-radius:20px}
+.stat-value{font-size:30px;font-family:'Orbitron','Inter',sans-serif}
+.form-card{border-radius:26px;padding:24px}
+.field input,.field select,.field textarea,.auth-input,.dm-input,.dm-new-input,.bbs-reply-input{background:rgba(5,8,22,.72);border-color:rgba(124,247,255,.14);border-radius:14px;padding:12px 14px;box-shadow:inset 0 0 0 1px rgba(124,247,255,.03)}
+.field label,.stat-label,.section-title,.chart-label,.pnl-preview-label{color:#8ea4dd}
+.btn-add,.btn-auth,.btn-ai,.dm-send{background:linear-gradient(135deg,#7cf7ff,#c8a7ff);color:#08111d;border-radius:16px;font-weight:800;box-shadow:0 16px 30px rgba(124,247,255,.20)}
+.btn-add:hover,.btn-auth:hover,.btn-ai:hover,.dm-send:hover{transform:translateY(-2px);filter:saturate(1.1)}
+.chart-wrap{border-radius:12px;padding:.5rem}.charts-grid{gap:14px}.bal-grid,.contract-stats,.cost-summary{gap:14px}
+.s-item,.bbs-post{border-radius:20px}.dm-wrap{border-radius:26px;grid-template-columns:260px 1fr}.dm-main{background:rgba(5,8,22,.44)}
+.notify{background:rgba(8,12,28,.94);border-color:rgba(124,247,255,.18);border-radius:18px}
+#debugBadge{position:fixed;bottom:8px;right:8px;z-index:9999;font-size:10px;padding:4px 8px;border-radius:8px;background:rgba(0,0,0,.75);border:1px solid rgba(124,247,255,.25);color:#8ea4dd;font-family:monospace;pointer-events:none;display:none}
+@media(max-width:1100px){.hero-grid{grid-template-columns:1fr}#paneSession{grid-template-columns:1fr}.session-side-panel{grid-column:1;grid-row:auto;position:relative;top:auto;order:4}#paneSession>.section-title{order:5}#paneSession>.form-card{order:6}#paneSession>div[style*="text-align:center;margin:1rem 0"]{order:7}#paneSession>#histSection{order:8}}
+@media(max-width:760px){.app{padding:1rem .9rem 5rem}.top-bar{padding:.9rem 1rem}.site-title{font-size:22px}.hero-shell{padding:22px;border-radius:26px}.hero-side,.hero-mini-grid,.quick-links,.stats-grid,.contract-stats,.bal-grid,.cost-summary,.charts-grid,.form-row.three,.form-row.four{grid-template-columns:1fr !important}.hero-card.wide{grid-column:span 1;display:block}.tabs{top:78px}.session-side-panel{position:relative;top:auto}#adTop{grid-template-columns:1fr !important}}
+</style>
+</head>
+<body>
+<!-- ══ AUTH SCREEN ══════════════════════════════════════════════ -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo"><span>♠</span> PokerLog <span class="suit">♥</span></div>
+    <div class="auth-tagline">Pro Poker Bankroll Manager</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login',this)">ログイン</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup',this)">新規登録</button>
+    </div>
+    <div id="loginForm" class="auth-form">
+      <input class="auth-input" type="email" id="loginEmail" placeholder="メールアドレス">
+      <input class="auth-input" type="password" id="loginPass" placeholder="パスワード">
+      <div class="auth-err" id="loginErr"></div>
+      <button class="btn-auth" id="btnLogin" onclick="emailLogin()">ログイン</button>
+      <div class="auth-divider">または</div>
+      <button class="btn-auth btn-google" onclick="googleLogin()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.16C6.51 42.62 14.62 48 24 48z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.16C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.16C12.43 13.72 17.74 9.5 24 9.5z"/></svg>
+        Googleでログイン
+      </button>
+      <button class="btn-sm" style="text-align:center" onclick="resetPassword()">パスワードを忘れた方</button>
+      <button class="btn-sm" style="text-align:center" onclick="resendVerification()">確認メールを再送する</button>
+    </div>
+    <div id="signupForm" class="auth-form" style="display:none">
+      <input class="auth-input" type="text" id="signupName" placeholder="表示名（ハンドル名）">
+      <input class="auth-input" type="email" id="signupEmail" placeholder="メールアドレス">
+      <input class="auth-input" type="password" id="signupPass" placeholder="パスワード（6文字以上）">
+      <div class="auth-err" id="signupErr"></div>
+      <div class="auth-err" id="signupSuccess" style="color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.08);display:none"></div>
+      <button class="btn-auth" id="btnSignup" onclick="emailSignup()">アカウント作成</button>
+      <div class="auth-divider">または</div>
+      <button class="btn-auth btn-google" onclick="googleLogin()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.16C6.51 42.62 14.62 48 24 48z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.16C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.16C12.43 13.72 17.74 9.5 24 9.5z"/></svg>
+        Googleで登録
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ══ MAIN APP ══════════════════════════════════════════════════ -->
+<div id="mainApp" style="display:none">
+<div class="app">
+<div id="adTop" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 12px;align-items:stretch;">
+<a href="https://app.tria.so/?accessCode=WRJLEE6910" target="_blank" rel="nofollow sponsored noopener" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:20px 24px;border-radius:12px;position:relative;overflow:hidden;text-decoration:none;background:linear-gradient(160deg,#07070f 0%,#0e0e1a 40%,#111118 70%,#080810 100%);border:1px solid rgba(212,175,55,.32);box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 0 1px rgba(212,175,55,.08),inset 0 1px 0 rgba(255,255,255,.07);color:#fff;box-sizing:border-box;">
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 0%,rgba(212,175,55,.4) 20%,#f5e070 50%,rgba(212,175,55,.4) 80%,transparent 100%);"></div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.2),transparent);"></div>
+  <div style="font-size:9px;letter-spacing:.5em;color:rgba(212,175,55,.7);font-weight:700;margin-bottom:10px;text-transform:uppercase;">T R I A</div>
+  <div style="font-size:20px;font-weight:900;letter-spacing:.04em;line-height:1.1;text-align:center;margin-bottom:4px;background:linear-gradient(135deg,#fff 0%,#f5e8c0 60%,#d4af37 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Elite Crypto Wallet</div>
+  <div style="font-size:11px;color:rgba(212,175,55,.55);text-align:center;margin-bottom:16px;letter-spacing:.02em;">ハイプレイヤーに選ばれる上質な決済体験</div>
+  <div style="padding:8px 22px;border-radius:999px;background:linear-gradient(135deg,#f5d77a 0%,#d4a820 50%,#b8891f 100%);color:#0a0805;font-size:12px;font-weight:900;letter-spacing:.06em;box-shadow:0 4px 16px rgba(212,175,55,.35),inset 0 1px 0 rgba(255,255,255,.45);">登録する</div>
+</a>
+<a href="https://nontiltmagazine.jp/" target="_blank" rel="noopener noreferrer" style="display:block;border-radius:12px;overflow:hidden;line-height:0;transition:opacity .3s ease;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+  <img src="8D1E972C-6809-40DA-856D-F6572B2EB0E8.jpg" alt="Non'Tilt 全国送料無料 一箱10本入り" style="width:100%;height:auto;display:block;">
+</a>
+</div>
+<div class="top-bar">
+  <div class="site-title"><span>♠</span> PokerLog <span class="suit">♥</span></div>
+  <div class="user-pill">
+    <div class="avatar-sm" id="navAvatar">?</div>
+    <span id="navName" style="font-size:12px;color:var(--text2)"></span>
+    <button class="btn-logout" onclick="logout()">ログアウト</button>
+  </div>
+</div>
+<section class="hero-shell">
+  <div class="hero-grid">
+    <div>
+      <div class="hero-kicker">Neural Poker Network / Tokyo-Kyoto Node</div>
+      <div class="hero-title">次世代の <span class="accent">Poker Operating System</span></div>
+      <div class="hero-copy">収支・残高・契約・経費・分析をひとつのネット空間に統合。プレイヤーの実戦データを、ただの記録ではなく、判断速度を上げるための視覚体験へ変換します。</div>
+      <div class="hero-mini-grid">
+        <div class="hero-mini"><div class="k">Current Mode</div><div class="v">Session Core</div></div>
+        <div class="hero-mini"><div class="k">Network Sync</div><div class="v" id="heroSync">Active</div></div>
+        <div class="hero-mini"><div class="k">Displayed Cur</div><div class="v" id="heroCur">JPY</div></div>
+      </div>
+      <div class="hero-actions">
+        <button class="hero-btn primary" onclick="document.getElementById('fBuyin').focus()">新規セッションを記録</button>
+        <button class="hero-btn ghost" onclick="switchTab('graphs',document.querySelector('.tab[onclick*=\'graphs\']'))">分析を開く</button>
+      </div>
+    </div>
+    <div class="hero-side">
+      <div class="hero-card"><div class="hero-label">Total PnL</div><div class="hero-value" id="heroNet">—</div><div class="hero-note">全通貨を跨いだ運用の中核指標</div></div>
+      <div class="hero-card"><div class="hero-label">Win Rate</div><div class="hero-value" id="heroWr">—</div><div class="hero-note">勝ちセッション比率をリアルタイム同期</div></div>
+      <div class="hero-card wide"><div><div class="hero-label">Session Pulse</div><div class="hero-value" id="heroSessions">0</div></div><div class="hero-note" id="heroMeta">稼働データが蓄積されるほど、ダッシュボードが鮮明になります。</div></div>
+    </div>
+  </div>
+</section>
+<div class="rate-bar">
+  <span>為替</span>
+  <div id="rateItems" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+  <span class="rate-status" id="rateStatus">取得中...</span>
+  <button class="btn-sm" style="font-size:10px;padding:3px 8px;margin-left:4px" onclick="fetchRates()">更新</button>
+  <button class="btn-sm" style="font-size:10px;padding:3px 8px" onclick="openRateEdit()">手動設定</button>
+</div>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('session',this)">セッション</button>
+  <button class="tab" onclick="switchTab('graphs',this)">グラフ</button>
+  <button class="tab" onclick="switchTab('ai',this)">AI評価</button>
+  <button class="tab" onclick="switchTab('balance',this)">PWC/PT</button>
+  <button class="tab" onclick="switchTab('contract',this)">契約</button>
+  <button class="tab" onclick="switchTab('cost',this)">経費</button>
+  <button class="tab" onclick="switchTab('account',this)">アカウント</button>
+</div>
+<!-- SESSION PANE -->
+<div class="pane active" id="paneSession">
+  <div class="profile-banner">
+    <div class="avatar" id="profileAvatar">?</div>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:700;font-family:'Playfair Display',serif;color:var(--text)" id="profileName">—</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:3px" id="profileSub"></div>
+    </div>
+    <button class="btn-sm btn-primary" onclick="openAccountTab()">プロフィール編集</button>
+  </div>
+  <div class="cur-row"><span>表示通貨</span><div id="curSwitcher" style="display:flex;gap:5px;flex-wrap:wrap"></div></div>
+  <div class="stats-grid">
+    <div class="stat"><div class="stat-label">総損益</div><div class="stat-value" id="sNet">—</div><div class="stat-sub" id="sNetJpy"></div></div>
+    <div class="stat"><div class="stat-label">勝率</div><div class="stat-value" id="sWR">—</div></div>
+    <div class="stat"><div class="stat-label">セッション数</div><div class="stat-value" id="sCnt">0</div></div>
+    <div class="stat"><div class="stat-label">時間単価</div><div class="stat-value" id="sHourly">—</div></div>
+    <div class="stat"><div class="stat-label">最大勝ち</div><div class="stat-value pos" id="sBest">—</div></div>
+    <div class="stat"><div class="stat-label">最大負け</div><div class="stat-value neg" id="sWorst">—</div></div>
+  </div>
+  <div class="section-title">セッションを追加</div>
+  <div class="form-card">
+    <div class="form-row">
+      <div class="field"><label>日付</label><input type="date" id="fDate"></div>
+      <div class="field"><label>通貨</label>
+        <select id="fCurrency" onchange="onCurrencyChange()">
+          <option value="JPY">JPY — 日本円</option><option value="USD">USD — 米ドル</option>
+          <option value="EUR">EUR — ユーロ</option><option value="GBP">GBP — 英ポンド</option>
+          <option value="PWC">PWC — ポーカーWEBコイン</option><option value="PT">PT — +point</option>
+          <option value="KRW">KRW — 韓国ウォン</option><option value="HKD">HKD — 香港ドル</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>ゲーム種別</label>
+        <select id="fGame"><option>No Limit Hold'em</option><option>Pot Limit Omaha</option><option>トーナメント</option><option>その他</option></select>
+      </div>
+      <div class="field"><label>大会名（任意）</label><input type="text" id="fTournament" placeholder="例：〇〇オープン 2025"></div>
+    </div>
+    <div class="form-row three">
+      <div class="field"><label>バイイン</label><input type="number" id="fBuyin" placeholder="10000" min="0" oninput="updatePreview()"></div>
+      <div class="field"><label>精算額</label><input type="number" id="fCashout" placeholder="15000" min="0" oninput="updatePreview()"></div>
+      <div class="field"><label>時間 (h)</label><input type="number" id="fHours" placeholder="3" min="0" step="0.5"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>場所</label><input type="text" id="fVenue" placeholder="カジノ / オンライン など"></div>
+      <div class="field"><label>メモ</label><input type="text" id="fNote" placeholder="任意のメモ"></div>
+    </div>
+    <div class="pnl-preview" id="pnlPreview">
+      <span class="pnl-preview-label">損益プレビュー</span>
+      <span id="pnlPreviewVal" style="font-weight:700;font-size:15px;font-family:'Playfair Display',serif"></span>
+      <span id="pnlPreviewJpy" style="color:var(--text3)"></span>
+    </div>
+    <div class="linked-section">
+      <div class="linked-title"><span class="dot"></span>バイイン資金の出所</div>
+      <div class="buyin-source">
+        <button class="source-btn active" onclick="setBuyinSource('own',this)">自己資金</button>
+        <button class="source-btn" onclick="setBuyinSource('contract',this)">選手契約残高から</button>
+        <button class="source-btn" onclick="setBuyinSource('pwc',this)">PWC残高から</button>
+        <button class="source-btn" onclick="setBuyinSource('pt',this)">PT残高から</button>
+      </div>
+      <div id="buyinSourceDetail" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
+    </div>
+    <div id="balanceLink" style="display:none" class="linked-section">
+      <div class="linked-title"><span class="dot" style="background:var(--green)"></span>PWC/PT残高と自動連動</div>
+      <div style="font-size:11px;color:var(--text2)" id="balLinkDetail"></div>
+    </div>
+    <div class="linked-section">
+      <div class="linked-title"><span class="dot" style="background:var(--amber)"></span>経費と連動（任意）</div>
+      <div class="toggle-row">
+        <label class="toggle"><input type="checkbox" id="fAddExpense" onchange="toggleExpenseLink()"><span class="toggle-slider"></span></label>
+        <span class="toggle-label">エントランス代・ドリンク代を同時記録する</span>
+      </div>
+      <div id="expenseLinkFields" style="display:none">
+        <div class="form-row four" style="margin-top:8px;margin-bottom:0">
+          <div class="field"><label>エントランス(JPY)</label><input type="number" id="fEntranceFee" placeholder="0" min="0"></div>
+          <div class="field"><label>ドリンク(JPY)</label><input type="number" id="fDrinkFee" placeholder="0" min="0"></div>
+          <div class="field"><label>枚数</label><input type="number" id="fDrinkQty" placeholder="0" min="0"></div>
+          <div class="field"><label>その他(JPY)</label><input type="number" id="fOtherFee" placeholder="0" min="0"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-add" id="btnAddSession" onclick="addSession()">＋ セッションを追加</button>
+  </div>
+  <div style="text-align:center;margin:1rem 0">
+    <a href="https://px.a8.net/svt/ejp?a8mat=3HKQCZ+AZC26A+6HW+3SYRPT" rel="nofollow" target="_blank">
+    <img border="0" width="728" height="90" alt="" src="https://www27.a8.net/svt/bgt?aid=210919283664&wid=011&eno=01&mid=s00000000842023005000&mc=1" style="max-width:100%;height:auto"></a>
+    <img border="0" width="1" height="1" src="https://www14.a8.net/0.gif?a8mat=3HKQCZ+AZC26A+6HW+3SYRPT" alt="">
+  </div>
+  <div id="histSection" style="display:none">
+    <div class="section-title">セッション履歴</div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
+      <button class="filter-btn" onclick="setFilter('win',this)">勝ちのみ</button>
+      <button class="filter-btn" onclick="setFilter('loss',this)">負けのみ</button>
+      <button class="filter-btn" onclick="setFilter('tourn',this)">大会のみ</button>
+      <button class="filter-btn" onclick="setFilter('linked',this)">連動あり</button>
+    </div>
+    <div class="item-list" id="sessionsList"></div>
+  </div>
+  <aside class="session-side-panel">
+    <div class="cyber-panel">
+      <div class="cyber-panel-title">Quick Jump</div>
+      <div class="quick-links">
+        <a class="quick-link" href="#" onclick="switchTab('graphs',document.querySelector('.tab[onclick*=\'graphs\']'));return false;"><b>グラフ</b><span>推移・分布・月別損益を確認</span></a>
+        <a class="quick-link" href="#" onclick="switchTab('balance',document.querySelector('.tab[onclick*=\'balance\']'));return false;"><b>PWC / PT</b><span>コインとポイント残高を管理</span></a>
+        <a class="quick-link" href="#" onclick="switchTab('contract',document.querySelector('.tab[onclick*=\'contract\']'));return false;"><b>契約</b><span>選手契約の消化状況を確認</span></a>
+        <a class="quick-link" href="#" onclick="switchTab('cost',document.querySelector('.tab[onclick*=\'cost\']'));return false;"><b>経費</b><span>遠征コストと支出の記録へ</span></a>
+      </div>
+    </div>
+    <div class="cyber-panel">
+      <div class="cyber-panel-title">Live Snapshot</div>
+      <div class="cyber-list">
+        <div class="cyber-list-item"><span>総損益</span><b id="sideNet">—</b></div>
+        <div class="cyber-list-item"><span>時間単価</span><b id="sideHourly">—</b></div>
+        <div class="cyber-list-item"><span>最大勝ち</span><b id="sideBest">—</b></div>
+        <div class="cyber-list-item"><span>最大負け</span><b id="sideWorst">—</b></div>
+      </div>
+    </div>
+    <div class="cyber-panel">
+      <div class="cyber-panel-title">System Notes</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.85">記録・残高・契約・経費が連動しているため、ここは単なるログではなくプレイヤー専用の運用OSです。視認性を優先しつつ、夜の会場や移動中の確認でも読みやすいコントラストへ再設計しています。</div>
+    </div>
+  </aside>
+</div>
+<!-- GRAPHS PANE -->
+<div class="pane" id="paneGraphs">
+  <div class="ad-slot" style="height:80px;margin-bottom:8px" id="adGraphs"></div>
+  <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem">
+    <div class="chart-label" style="margin-bottom:2px;font-size:11px">統合JPY換算</div>
+    <canvas id="chartUnified" height="100" style="width:100%;height:100px"></canvas>
+  </div>
+  <div class="cur-row" style="margin-bottom:6px"><span>通貨別</span><div id="curSwitcher2" style="display:flex;gap:4px;flex-wrap:wrap"></div></div>
+  <div class="chart-wrap" style="margin-bottom:6px;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">バンクロール推移</div><canvas id="chartBankroll" height="100" style="width:100%;height:100px"></canvas></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">損益分布</div><canvas id="chartDist" height="80" style="width:100%;height:80px"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">ゲーム別勝率</div><canvas id="chartGame" height="80" style="width:100%;height:80px"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">月別損益</div><canvas id="chartMonthly" height="80" style="width:100%;height:80px"></canvas></div>
+    <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">大会 vs キャッシュ</div><canvas id="chartTournVsCash" height="80" style="width:100%;height:80px"></canvas></div>
+  </div>
+  <div class="chart-wrap" style="margin-bottom:0;padding:.5rem"><div class="chart-label" style="margin-bottom:2px;font-size:11px">通貨別損益</div><canvas id="chartAllCur" height="90" style="width:100%;height:90px"></canvas></div>
+  <div class="empty" id="graphEmpty" style="display:none">セッションを追加するとグラフが表示されます</div>
+</div>
+<!-- AI PANE -->
+<div class="pane" id="paneAi">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;text-align:center">
+    <div style="font-size:48px;margin-bottom:1.5rem">♟</div>
+    <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--gold);margin-bottom:1rem">近日公開</div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.8;max-width:320px">AIポーカーコーチ機能は現在準備中です。<br>ユーザー数が増え次第、順次オープンいたします。<br>お楽しみに！</div>
+    <div style="margin-top:2rem;display:flex;gap:8px;justify-content:center"><span style="font-size:20px">♠</span><span style="font-size:20px">♥</span><span style="font-size:20px">♦</span><span style="font-size:20px">♣</span></div>
+  </div>
+</div>
+<!-- RANKING PANE -->
+<div class="pane" id="paneRank">
+  <div class="ad-slot" style="height:80px;margin-bottom:1.5rem" id="adRank"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="section-title" style="margin:0;flex:1">リアルタイムランキング</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn-sm btn-primary" onclick="publishToRanking()">公開する</button>
+      <button class="btn-sm" onclick="loadRanking()">更新</button>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:1rem">※ JPYセッションの総損益・勝率・セッション数が全ユーザーに公開されます</div>
+  <div class="form-card" style="padding:0;overflow:hidden">
+    <div id="rankingLoading" style="padding:2rem;text-align:center;color:var(--text3);font-size:13px"><span class="loading-spinner"></span>読み込み中...</div>
+    <table class="rank-table" id="rankTable" style="display:none">
+      <thead><tr><th style="width:44px">順位</th><th>プレイヤー</th><th style="text-align:right">損益(JPY)</th><th style="text-align:right">勝率</th><th style="text-align:right">Sessions</th><th style="width:50px"></th></tr></thead>
+      <tbody id="rankBody"></tbody>
+    </table>
+    <div class="empty" id="rankEmpty" style="display:none;border:none">まだランキングに参加しているユーザーがいません</div>
+  </div>
+</div>
+<!-- DM PANE -->
+<div class="pane" id="paneDm">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <div class="section-title" style="margin:0;flex:1">ダイレクトメッセージ <span style="font-size:10px;color:var(--green);margin-left:6px">● リアルタイム</span></div>
+    <button class="btn-sm" onclick="loadDmConvos()">更新</button>
+  </div>
+  <div class="dm-wrap">
+    <div class="dm-side">
+      <div class="dm-side-hdr"><span>会話</span><span style="font-size:10px;color:var(--text3)" id="dmMyHandle"></span></div>
+      <div id="dmUserList" style="flex:1;overflow-y:auto"><div style="padding:12px;font-size:12px;color:var(--text3)">読み込み中...</div></div>
+      <div class="dm-new-area">
+        <input class="dm-new-input" id="dmNewTarget" placeholder="宛先ハンドル名">
+        <button class="btn-sm btn-primary" style="width:100%;font-size:11px;padding:7px" onclick="startNewDm()">新規DM</button>
+      </div>
+    </div>
+    <div class="dm-main">
+      <div class="dm-hdr" id="dmHeader"><span style="color:var(--text3);font-size:12px">会話を選択してください</span><div id="dmHeaderActions" style="display:none"><button class="report-btn" onclick="openReport(activeDmHandle)">⚑ 通報</button></div></div>
+      <div class="dm-msgs" id="dmMessages"><div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:12px;text-align:center">会話を選ぶか新規DMで相手を指定してください</div></div>
+      <div class="dm-input-row">
+        <input class="dm-input" id="dmInput" placeholder="メッセージを入力... (Enterで送信)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDm();}">
+        <button class="dm-send" onclick="sendDm()">送信</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- BBS PANE -->
+<div class="pane" id="paneBbs">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+    <div class="section-title" style="margin:0;flex:1"><span class="bbs-realtime-dot"></span>リアルタイム掲示板</div>
+    <button class="btn-sm" onclick="loadBbs()">更新</button>
+  </div>
+  <div class="bbs-categories" id="bbsCategories">
+    <button class="bbs-cat-btn active" onclick="setBbsCat('all',this)">すべて</button>
+    <button class="bbs-cat-btn" onclick="setBbsCat('info',this)">情報交換</button>
+    <button class="bbs-cat-btn" onclick="setBbsCat('result',this)">結果報告</button>
+    <button class="bbs-cat-btn" onclick="setBbsCat('question',this)">質問</button>
+    <button class="bbs-cat-btn" onclick="setBbsCat('tournament',this)">大会</button>
+    <button class="bbs-cat-btn" onclick="setBbsCat('strategy',this)">戦略</button>
+    <button class="bbs-cat-btn" onclick="setBbsCat('other',this)">雑談</button>
+  </div>
+  <div class="bbs-new-form">
+    <div class="section-title" style="margin-top:0">新規投稿</div>
+    <div class="form-row" style="margin-bottom:11px">
+      <div class="field"><label>カテゴリ</label><select id="bbsNewCat"><option value="info">情報交換</option><option value="result">結果報告</option><option value="question">質問</option><option value="tournament">大会</option><option value="strategy">戦略</option><option value="other">雑談</option></select></div>
+      <div class="field"><label>タイトル</label><input type="text" id="bbsNewTitle" placeholder="例：〇〇カジノの情報交換"></div>
+    </div>
+    <div class="field" style="margin-bottom:10px"><label>本文</label><textarea id="bbsNewBody" placeholder="内容を入力してください..." style="min-height:90px;width:100%;font-size:13px;padding:9px 11px;border:1px solid var(--gold-border);border-radius:var(--radius-sm);background:rgba(0,0,0,.3);color:var(--text);font-family:inherit;resize:vertical"></textarea></div>
+    <button class="btn-add" id="btnBbsPost" onclick="addBbsPost()">♠ 投稿する</button>
+  </div>
+  <div id="bbsList"><div class="empty">読み込み中...</div></div>
+</div>
+<!-- BALANCE PANE -->
+<div class="pane" id="paneBalance">
+  <div class="bal-grid">
+    <div class="bal-card"><div style="display:flex;align-items:center;gap:8px"><div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#166534,#4ade80);color:#0b1a0e;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">PWC</div><span style="font-size:13px;font-weight:600;color:var(--text)">ポーカーWEBコイン</span></div><div class="bal-amount" id="balPWC">0 PWC</div><div class="bal-sub" id="balPWCSub"></div><div class="bal-jpy" id="balPWCJpy"></div></div>
+    <div class="bal-card"><div style="display:flex;align-items:center;gap:8px"><div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#78350f,#fbbf24);color:#0b1a0e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">PT</div><span style="font-size:13px;font-weight:600;color:var(--text)">+point</span></div><div class="bal-amount" id="balPT">0 PT</div><div class="bal-sub" id="balPTSub"></div><div class="bal-jpy" id="balPTJpy"></div></div>
+  </div>
+  <div style="background:rgba(201,168,76,.05);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1.5rem;font-size:12px;color:var(--text3)">💡 PWC/PTセッション追加で自動反映。バイインを「PWC/PT残高から」に設定すると自動差し引きされます。</div>
+  <div class="section-title">手動で入出金を記録</div>
+  <div class="form-card">
+    <div class="form-row three">
+      <div class="field"><label>日付</label><input type="date" id="tDate"></div>
+      <div class="field"><label>通貨</label><select id="tCurrency"><option value="PWC">PWC</option><option value="PT">PT</option><option value="JPY">JPY</option><option value="USD">USD</option></select></div>
+      <div class="field"><label>種別</label><select id="tType"><option value="deposit">入金 / チャージ</option><option value="withdraw">出金 / 換金</option><option value="fee">手数料</option><option value="transfer">トランスファー</option><option value="bonus">ボーナス / 返金</option></select></div>
+    </div>
+    <div class="form-row"><div class="field"><label>金額</label><input type="number" id="tAmount" placeholder="1000" min="0"></div><div class="field"><label>メモ</label><input type="text" id="tMemo" placeholder="クレカ入金など"></div></div>
+    <button class="btn-add" onclick="addTx()">＋ 記録する</button>
+  </div>
+  <div id="txSection" style="display:none">
+    <div class="section-title">取引履歴</div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setTxFilter('all',this)">すべて</button>
+      <button class="filter-btn" onclick="setTxFilter('PWC',this)">PWC</button>
+      <button class="filter-btn" onclick="setTxFilter('PT',this)">PT</button>
+      <button class="filter-btn" onclick="setTxFilter('auto',this)">自動記録</button>
+      <button class="filter-btn" onclick="setTxFilter('fee',this)">手数料</button>
+    </div>
+    <div class="item-list" id="txList"></div>
+  </div>
+</div>
+<!-- CONTRACT PANE -->
+<div class="pane" id="paneContract">
+  <div class="contract-box">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold3),var(--gold));color:#0b1a0e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;box-shadow:0 0 16px rgba(201,168,76,.3);font-family:'Playfair Display',serif">契約</div>
+      <div><div style="font-size:15px;font-weight:700;font-family:'Playfair Display',serif;color:var(--gold)" id="contractName">契約未設定</div><div style="font-size:12px;color:var(--text3)" id="contractTeam">チーム名を設定してください</div></div>
+    </div>
+    <div class="contract-stats">
+      <div class="c-stat"><div class="c-stat-label">契約残高</div><div class="c-stat-val" id="cBalance">—</div></div>
+      <div class="c-stat"><div class="c-stat-label">受取合計</div><div class="c-stat-val" style="color:var(--green)" id="cReceived">—</div></div>
+      <div class="c-stat"><div class="c-stat-label">使用合計</div><div class="c-stat-val" style="color:var(--red)" id="cUsed">—</div></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="cProgress" style="width:0%;background:var(--green)"></div></div>
+  </div>
+  <div style="background:rgba(201,168,76,.05);border:1px solid var(--gold-border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:1.5rem;font-size:12px;color:var(--text3)">💡 セッション追加時に「選手契約残高から」を選ぶとバイイン額が自動支出記録されます。</div>
+  <div class="section-title">契約情報を設定</div>
+  <div class="form-card">
+    <div class="form-row"><div class="field"><label>選手名 / ハンドル</label><input type="text" id="cName" placeholder="山田太郎"></div><div class="field"><label>チーム / スポンサー</label><input type="text" id="cTeam" placeholder="〇〇カジノ公認"></div></div>
+    <div class="form-row"><div class="field"><label>契約開始</label><input type="date" id="cStart"></div><div class="field"><label>契約終了</label><input type="date" id="cEnd"></div></div>
+    <button class="btn-add" onclick="saveContractInfo()">契約情報を保存</button>
+  </div>
+  <div class="section-title">手動で入出金を記録</div>
+  <div class="form-card">
+    <div class="form-row three">
+      <div class="field"><label>日付</label><input type="date" id="crDate"></div>
+      <div class="field"><label>種別</label><select id="crType"><option value="received">受取</option><option value="used">使用</option><option value="bonus">ボーナス</option><option value="expense">経費精算</option></select></div>
+      <div class="field"><label>金額 (JPY)</label><input type="number" id="crAmount" placeholder="50000" min="0"></div>
+    </div>
+    <div class="field" style="margin-bottom:8px"><label>メモ</label><input type="text" id="crMemo" placeholder="大会参加費、スポンサー料など"></div>
+    <button class="btn-add" onclick="addContractTx()">＋ 記録する</button>
+  </div>
+  <div id="crTxSection" style="display:none"><div class="section-title">契約取引履歴</div><div class="item-list" id="crTxList"></div></div>
+</div>
+<!-- COST PANE -->
+<div class="pane" id="paneCost">
+  <div class="cost-summary">
+    <div class="stat"><div class="stat-label">エントランス計</div><div class="stat-value warn" id="costEntrance">¥0</div></div>
+    <div class="stat"><div class="stat-label">ドリンク計</div><div class="stat-value warn" id="costDrink">¥0</div></div>
+    <div class="stat"><div class="stat-label">その他経費</div><div class="stat-value warn" id="costOther">¥0</div></div>
+  </div>
+  <div class="stat" style="margin-bottom:1.5rem"><div class="stat-label">総経費</div><div class="stat-value neg" id="costTotal">¥0</div><div class="stat-sub" id="costNetNote"></div></div>
+  <div class="section-title">手動で経費を追加</div>
+  <div class="form-card">
+    <div class="form-row three">
+      <div class="field"><label>日付</label><input type="date" id="eDate"></div>
+      <div class="field"><label>種別</label><select id="eType"><option value="entrance">エントランス代</option><option value="drink">ドリンクチケット</option><option value="transport">交通費</option><option value="hotel">宿泊費</option><option value="food">飲食費</option><option value="other">その他</option></select></div>
+      <div class="field"><label>金額 (JPY)</label><input type="number" id="eAmount" placeholder="1000" min="0"></div>
+    </div>
+    <div class="form-row"><div class="field"><label>場所 / イベント</label><input type="text" id="eVenue" placeholder="〇〇カジノ"></div><div class="field"><label>メモ</label><input type="text" id="eMemo" placeholder="ウーロン茶×3"></div></div>
+    <div class="field" style="margin-bottom:8px"><label>ドリンクチケット枚数（任意）</label><input type="number" id="eDrinkQty" placeholder="3" min="0" step="1"></div>
+    <button class="btn-add" onclick="addExpense()">＋ 経費を追加</button>
+  </div>
+  <div id="expSection" style="display:none">
+    <div class="section-title">経費履歴</div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setExpFilter('all',this)">すべて</button>
+      <button class="filter-btn" onclick="setExpFilter('entrance',this)">エントランス</button>
+      <button class="filter-btn" onclick="setExpFilter('drink',this)">ドリンク</button>
+      <button class="filter-btn" onclick="setExpFilter('auto',this)">自動記録</button>
+    </div>
+    <div class="item-list" id="expList"></div>
+  </div>
+</div>
+<!-- ACCOUNT PANE -->
+<div class="pane" id="paneAccount">
+  <div class="section-title" style="margin-top:0">プロフィール</div>
+  <div class="form-card">
+    <div class="form-row three">
+      <div class="field"><label>ハンドル名（ID）</label><input type="text" id="rHandle" placeholder="pokerpro123" maxlength="20"></div>
+      <div class="field"><label>表示名</label><input type="text" id="rDisplayName" placeholder="山田ポーカー" maxlength="20"></div>
+      <div class="field"><label>ひとことコメント</label><input type="text" id="rBio" placeholder="NLHE専門" maxlength="30"></div>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>Twitter / X ハンドル（@なし）</label><input type="text" id="rTwitter" placeholder="poker_yamada123" maxlength="40"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-add" style="flex:1;margin-top:0" id="btnSaveProfile" onclick="saveProfile()">プロフィールを保存</button>
+      <button class="btn-sm btn-twitter" onclick="shareToTwitter()"><span style="font-size:12px;font-weight:700">𝕏</span> Xでシェア</button>
+    </div>
+  </div>
+  <div class="section-title">データ管理・バックアップ</div>
+  <div class="backup-card">
+    <div class="backup-row"><span class="backup-label">保存先</span><span class="backup-val">Firebase Firestore（クラウド）</span></div>
+    <div class="backup-row"><span class="backup-label">自動バックアップ</span><span class="backup-val">✓ 常時（書き込み即時保存）</span></div>
+    <div class="backup-row"><span class="backup-label">マルチデバイス</span><span class="backup-val">✓ スマホ・PCどこからでも</span></div>
+    <div class="backup-row"><span class="backup-label">セッション数</span><span class="backup-val" id="backupSessionCount">—</span></div>
+    <div class="backup-row"><span class="backup-label">最終更新</span><span class="backup-val" id="backupLastUpdate">—</span></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-sm btn-primary" onclick="exportData()">JSONでエクスポート</button>
+      <button class="btn-sm" onclick="runSyncTest()" id="btnSyncTest">🔄 同期テスト</button>
+      <button class="btn-sm btn-danger" onclick="confirmDeleteAccount()">アカウント削除</button>
+    </div>
+    <div id="syncTestResult" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:12px;font-family:monospace;white-space:pre-wrap;word-break:break-all"></div>
+  </div>
+  <div class="section-title">パスワード変更</div>
+  <div class="form-card">
+    <div class="form-row"><div class="field"><label>新しいパスワード</label><input type="password" id="newPass1" placeholder="新しいパスワード（6文字以上）"></div><div class="field"><label>確認</label><input type="password" id="newPass2" placeholder="もう一度入力"></div></div>
+    <button class="btn-add" onclick="changePassword()">パスワードを変更</button>
+  </div>
+</div>
+</div><!-- .app -->
+</div><!-- #mainApp -->
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <div class="modal-title">⚑ ユーザーを通報</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:1rem" id="reportTargetLabel">通報対象：—</div>
+    <div class="field" style="margin-bottom:10px"><label>通報理由</label><select id="reportReason"><option value="spam">スパム / 迷惑行為</option><option value="fraud">詐欺 / 不正行為</option><option value="harassment">ハラスメント</option><option value="fake">なりすまし</option><option value="cheating">不正プレイ</option><option value="other">その他</option></select></div>
+    <div class="field" style="margin-bottom:14px"><label>詳細（任意）</label><textarea id="reportDetail" placeholder="詳細な状況を記入..." style="min-height:80px"></textarea></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-add btn-danger" style="background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--red)" onclick="submitReport()">通報を送信</button>
+      <button class="btn-sm" onclick="document.getElementById('reportModal').classList.remove('open')">キャンセル</button>
+    </div>
+  </div>
+</div>
+<!-- RATE MODAL -->
+<div class="modal-overlay" id="rateModal">
+  <div class="modal">
+    <div class="modal-title">為替レートを手動設定</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">1単位あたりの日本円（JPY）を入力</div>
+    <div id="rateEditFields" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-add" style="margin-top:0" onclick="saveManualRates()">保存</button>
+      <button class="btn-sm" onclick="document.getElementById('rateModal').classList.remove('open')">キャンセル</button>
+    </div>
+  </div>
+</div>
+<div id="debugBadge"><span id="dbFb">⚡—</span><span id="dbAuth" style="margin-left:6px">👤—</span><span id="dbFs" style="margin-left:6px">💾—</span></div>
+<div class="notify" id="notify"></div>
+<script>
+// ================================================================
+// [PokerLog] Firebase Config & Init
+// ================================================================
+const firebaseConfig={
+  apiKey:"AIzaSyDbZ025iGTvMo2Gy7SkjLGIAGZzQ_jALtY",
+  authDomain:"pro-f6323.firebaseapp.com",
+  projectId:"pro-f6323",
+  storageBucket:"pro-f6323.firebasestorage.app",
+  messagingSenderId:"1043235599664",
+  appId:"1:1043235599664:web:381c2a9ed4c97553e484f5",
+  measurementId:"G-EZGR97HEBY"
+};
+let isFirebaseReady=false,db,auth;
+function _fsts(){try{return firebase.firestore.FieldValue.serverTimestamp();}catch(e){return null;}}
+try{
+  firebase.initializeApp(firebaseConfig);
+  auth=firebase.auth();
+  db=firebase.firestore();
+  isFirebaseReady=true;
+  setTimeout(()=>updateDebugBadge('fb','⚡✓'),0);
+  console.log('[PokerLog] Firebase+Firestore ready ✓');
+}catch(e){console.error('[PokerLog] Firebase init failed:',e);}
+
+// ================================================================
+// [PokerLog] Globals
+// ================================================================
+const DEBUG_MODE=new URLSearchParams(location.search).has('debug');
+let skipAuthStateCheck=false;
+let currentUser=null,isLocalMode=false;
+let rates={JPY:1,USD:150,EUR:163,GBP:188,PWC:1,PT:1,CNY:21,KRW:0.11,THB:4.2,HKD:19};
+let manualRates={};
+let sessions=[],txList_data=[],crTxList_data=[],expList_data=[],contractInfo={};
+let profile={handle:'',displayName:'',bio:'',twitter:''};
+let currentFilter='all',currentTxFilter='all',currentExpFilter='all',currentBbsCat='all';
+let buyinSource='own';
+let activeDmHandle=null,activeDmUid=null;
+let unsubDm=null;
+let notifyTimer=null;
+let charts={};
+
+// ================================================================
+// [PokerLog] Debug Badge
+// ================================================================
+function updateDebugBadge(type,val){
+  if(!DEBUG_MODE)return;
+  const b=document.getElementById('debugBadge');
+  if(b)b.style.display='block';
+  const ids={fb:'dbFb',auth:'dbAuth',fs:'dbFs'};
+  const el=document.getElementById(ids[type]);
+  if(el)el.textContent=val;
+}
+updateDebugBadge('fb',isFirebaseReady?'⚡✓':'⚡✗');
+
+// ================================================================
+// [PokerLog] localStorage helpers
+// ================================================================
+function lsGet(k,d=null){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch{return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('[PokerLog] lsSet:',k,e);}}
+
+// ================================================================
+// [PokerLog] Notify
+// ================================================================
+function notify(msg,type='info'){
+  const el=document.getElementById('notify');
+  if(!el)return;
+  el.textContent=msg;
+  el.className='notify show'+(type==='err'?' err':type==='warn'?' warn':'');
+  clearTimeout(notifyTimer);
+  notifyTimer=setTimeout(()=>el.classList.remove('show'),type==='err'||type==='warn'?10000:4000);
+}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ================================================================
+// [PokerLog] Tab control
+// ================================================================
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  if(el)el.classList.add('active');
+  else{const b=document.querySelector(`.tab[onclick*="'${name}'"]`);if(b)b.classList.add('active');}
+  const pane=document.getElementById('pane'+name.charAt(0).toUpperCase()+name.slice(1));
+  if(pane)pane.classList.add('active');
+  if(name==='graphs')renderCharts();
+  if(name==='rank')loadRanking();
+  if(name==='bbs')loadBbs();
+}
+function openAccountTab(){switchTab('account',document.querySelector('.tab[onclick*="account"]'));}
+
+// ================================================================
+// [PokerLog] Auth tab
+// ================================================================
+function switchAuthTab(t,el){
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('loginForm').style.display=t==='login'?'':'none';
+  document.getElementById('signupForm').style.display=t==='signup'?'':'none';
+}
+
+// ================================================================
+// [PokerLog] Exchange rates
+// ================================================================
+async function fetchRates(){
+  const statusEl=document.getElementById('rateStatus');
+  if(statusEl)statusEl.textContent='取得中...';
+  try{
+    const r=await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
+    if(!r.ok)throw new Error('fetch failed');
+    const d=await r.json();
+    ['USD','EUR','GBP','CNY','KRW','THB','HKD'].forEach(c=>{
+      if(d.rates[c])rates[c]=parseFloat((1/d.rates[c]).toFixed(4));
+    });
+    Object.assign(rates,manualRates);
+    if(statusEl)statusEl.textContent='取得済';
+    renderRateBar();
+  }catch(e){
+    console.warn('[PokerLog] fetchRates:',e);
+    if(statusEl)statusEl.textContent='取得失敗';
+    Object.assign(rates,manualRates);
+    renderRateBar();
+  }
+}
+function renderRateBar(){
+  const el=document.getElementById('rateItems');
+  if(!el)return;
+  const show=['USD','EUR','GBP','KRW','THB','PWC','PT'];
+  el.innerHTML=show.map(c=>`<span style="font-size:11px;padding:2px 7px;background:rgba(201,168,76,.1);border:1px solid var(--gold-border);border-radius:20px;white-space:nowrap">${c} <b style="color:var(--gold)">¥${rates[c]>=1?rates[c].toFixed(1):rates[c].toFixed(3)}</b></span>`).join('');
+}
+function convertToJPY(v,cur){return Math.round(v*(rates[cur]||1));}
+function openRateEdit(){
+  const container=document.getElementById('rateEditFields');
+  if(!container)return;
+  const currencies=['USD','EUR','GBP','CNY','KRW','THB','HKD','PWC','PT'];
+  container.innerHTML=currencies.map(c=>`
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="width:50px;font-size:13px;color:var(--text2)">${c}</label>
+      <input type="number" id="rate_${c}" value="${rates[c]||''}" placeholder="${c}あたりのJPY" style="flex:1">
+    </div>`).join('');
+  document.getElementById('rateModal').classList.add('open');
+}
+function saveManualRates(){
+  ['USD','EUR','GBP','CNY','KRW','THB','HKD','PWC','PT'].forEach(c=>{
+    const v=parseFloat(document.getElementById('rate_'+c)?.value);
+    if(v>0){manualRates[c]=v;rates[c]=v;}
+  });
+  lsSet('manualRates',manualRates);
+  document.getElementById('rateModal').classList.remove('open');
+  renderRateBar();
+  notify('レートを更新しました');
+}
+
+// ================================================================
+// [PokerLog] Firestore CRUD (Fixed - no localStorage inside)
+// ================================================================
+function saveDoc(col,id,data){
+  if(!currentUser){console.warn('[PokerLog] saveDoc skip: no user');return;}
+  if(!isFirebaseReady){console.warn('[PokerLog] saveDoc skip: firebase not ready');return;}
+  console.log('[PokerLog] saveDoc writing:',col,id);
+  db.collection('userData').doc(currentUser.uid).collection(col).doc(id)
+    .set(data,{merge:true})
+    .then(()=>{console.log('[PokerLog] saveDoc OK:',col,id);updateDebugBadge('fs','💾✓');})
+    .catch(e=>{console.error('[PokerLog] saveDoc ERR:',col,e.code,e.message);updateDebugBadge('fs','💾✗');notify('クラウド同期失敗: '+e.code,'warn');});
+}
+async function testFirestoreWrite(){
+  if(!currentUser||!isFirebaseReady){
+    console.warn('[PokerLog] testFS skip: ready='+isFirebaseReady+' user='+(currentUser?'yes':'no'));
+    notify('FS診断: Firebase未初期化','err');return;
+  }
+  // まずREST APIで直接疎通確認
+  try{
+    const token=await currentUser.getIdToken();
+    const url=`https://firestore.googleapis.com/v1/projects/pro-f6323/databases/(default)/documents`;
+    const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    console.log('[PokerLog] REST API status:',res.status);
+    if(!res.ok){
+      notify('FS REST失敗: HTTP '+res.status,'err');
+      console.error('[PokerLog] REST body:',await res.text());
+      return;
+    }
+  }catch(re){console.warn('[PokerLog] REST test:',re.message);}
+  // SDK書き込みテスト
+  try{
+    await db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
+      .set({ts:Date.now(),ok:true},{merge:true});
+    console.log('[PokerLog] testFS: WRITE OK ✓');
+    notify('Firestore接続OK ✓ データ同期有効','info');
+    updateDebugBadge('fs','💾✓');
+  }catch(e){
+    console.error('[PokerLog] testFS ERR:',e.code,e.message);
+    notify('FS書き込み失敗: '+e.code+' / '+e.message,'err');
+    updateDebugBadge('fs','💾✗');
+  }
+}
+async function runSyncTest(){
+  const btn=document.getElementById('btnSyncTest');
+  const res=document.getElementById('syncTestResult');
+  if(!res)return;
+  res.style.display='block';
+  res.style.background='rgba(139,92,246,.1)';
+  res.style.border='1px solid rgba(139,92,246,.3)';
+  res.style.color='#a78bfa';
+  res.textContent='テスト中...';
+  if(btn)btn.disabled=true;
+  const log=[];
+  const addLog=(msg)=>{log.push(msg);res.textContent=log.join('\n');console.log('[PokerLog]',msg);};
+  addLog('Login: '+(currentUser?currentUser.email:'未ログイン'));
+  if(!currentUser){
+    res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+    if(btn)btn.disabled=false;return;
+  }
+  // Wait for Firestore to be ready (up to 15 seconds)
+  if(!isFirebaseReady){
+    addLog('Firestore読み込み中...');
+    for(let i=0;i<150&&!isFirebaseReady;i++)await new Promise(r=>setTimeout(r,100));
+  }
+  addLog('Firebase ready: '+isFirebaseReady);
+  if(!isFirebaseReady){
+    addLog('エラー: Firestoreの読み込みに失敗しました');
+    addLog('DevTools ConsoleでFirestore importエラーを確認してください');
+    res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+    if(btn)btn.disabled=false;return;
+  }
+  // Network reconnect
+  try{await db.enableNetwork();addLog('ネット再接続: OK');}catch(ne){addLog('ネット再接続: '+ne.message);}
+  // SDK write test (10 second timeout)
+  addLog('書き込みテスト中...');
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout:10秒経過')),10000));
+  try{
+    await Promise.race([
+      db.collection('userData').doc(currentUser.uid).collection('_test').doc('ping')
+        .set({ts:Date.now(),ok:true,device:navigator.userAgent.slice(0,50)},{merge:true}),
+      timeout
+    ]);
+    addLog('書き込み: ✓ 成功！');
+    res.style.background='rgba(74,222,128,.1)';res.style.border='1px solid rgba(74,222,128,.3)';res.style.color='var(--green)';
+    updateDebugBadge('fs','💾✓');
+  }catch(e){
+    addLog('書き込み失敗: '+(e.code||'')+(e.code?'\n':'')+e.message);
+    res.style.background='rgba(248,113,113,.1)';res.style.border='1px solid rgba(248,113,113,.3)';res.style.color='var(--red)';
+    updateDebugBadge('fs','💾✗');
+  }
+  if(btn)btn.disabled=false;
+}
+function deleteDoc(col,id){
+  if(!currentUser||!isFirebaseReady)return;
+  db.collection('userData').doc(currentUser.uid).collection(col).doc(id)
+    .delete()
+    .then(()=>updateDebugBadge('fs','💾✓'))
+    .catch(e=>{console.error('[PokerLog] deleteDoc:',col,e);updateDebugBadge('fs','💾✗');});
+}
+
+// ================================================================
+// [PokerLog] Data fetch from Firestore
+// ================================================================
+async function fetchFromFirestore(){
+  if(!currentUser)return;
+  if(!isFirebaseReady){for(let i=0;i<80&&!isFirebaseReady;i++)await new Promise(r=>setTimeout(r,100));}
+  if(!isFirebaseReady)return;
+  const uid=currentUser.uid;
+  // 10秒でタイムアウト
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
+  try{
+    const [sSnap,tSnap,crSnap,exSnap,profSnap,ciSnap]=await Promise.race([Promise.all([
+      db.collection('userData').doc(uid).collection('sessions').orderBy('date','desc').get(),
+      db.collection('userData').doc(uid).collection('txs').orderBy('date','desc').get(),
+      db.collection('userData').doc(uid).collection('crTxs').orderBy('date','desc').get(),
+      db.collection('userData').doc(uid).collection('expenses').orderBy('date','desc').get(),
+      db.collection('users').doc(uid).get(),
+      db.collection('userData').doc(uid).collection('contractInfo').doc('main').get()
+    ]),timeout]);
+    sessions=sSnap.docs.map(d=>({id:d.id,...d.data()}));
+    txList_data=tSnap.docs.map(d=>({id:d.id,...d.data()}));
+    crTxList_data=crSnap.docs.map(d=>({id:d.id,...d.data()}));
+    expList_data=exSnap.docs.map(d=>({id:d.id,...d.data()}));
+    if(profSnap.exists){const pd=profSnap.data();profile={handle:pd.handle||'',displayName:pd.displayName||'',bio:pd.bio||'',twitter:pd.twitter||''};}
+    if(ciSnap.exists)contractInfo=ciSnap.data()||{};
+    lsSet('local_sessions',sessions);lsSet('local_txs',txList_data);
+    lsSet('local_crTxs',crTxList_data);lsSet('local_expenses',expList_data);
+    lsSet('local_profile',profile);lsSet('local_ci',contractInfo);
+    renderAll();
+  }catch(e){
+    console.error('[PokerLog] fetchFromFirestore:',e);
+    sessions=lsGet('local_sessions',[]);txList_data=lsGet('local_txs',[]);
+    crTxList_data=lsGet('local_crTxs',[]);expList_data=lsGet('local_expenses',[]);
+    profile=lsGet('local_profile',{handle:'',displayName:'',bio:'',twitter:''});
+    contractInfo=lsGet('local_ci',{});
+    renderAll();
+  }
+}
+async function initUserData(){
+  sessions=lsGet('local_sessions',[]);txList_data=lsGet('local_txs',[]);
+  crTxList_data=lsGet('local_crTxs',[]);expList_data=lsGet('local_expenses',[]);
+  profile=lsGet('local_profile',{handle:'',displayName:currentUser?.displayName||'',bio:'',twitter:''});
+  contractInfo=lsGet('local_ci',{});
+  renderAll();
+  await fetchFromFirestore();
+}
+
+// ================================================================
+// [PokerLog] Auth — emailSignup (fixed)
+// ================================================================
+async function emailSignup(){
+  const name=document.getElementById('signupName').value.trim();
+  const email=document.getElementById('signupEmail').value.trim();
+  const pass=document.getElementById('signupPass').value;
+  const errEl=document.getElementById('signupErr');
+  const successEl=document.getElementById('signupSuccess');
+  const btn=document.getElementById('btnSignup');
+  errEl.style.display='none';successEl.style.display='none';
+  if(!name){errEl.textContent='表示名を入力してください';errEl.style.display='block';return;}
+  if(!email){errEl.textContent='メールアドレスを入力してください';errEl.style.display='block';return;}
+  if(pass.length<6){errEl.textContent='パスワードは6文字以上';errEl.style.display='block';return;}
+  btn.disabled=true;btn.textContent='登録中...';
+  let user=null,fsSaved=false;
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,pass);
+    user=cred.user;
+    await user.updateProfile({displayName:name});
+    // Firestoreへの保存はnon-blocking（接続失敗でもサインアップを止めない）
+    db.collection('users').doc(user.uid).set({displayName:name,email,handle:'',bio:'',twitter:'',createdAt:_fsts()}).catch(e=>console.warn('[PokerLog] profile save:',e));
+    fsSaved=true;
+    successEl.textContent=`登録完了！ようこそ、${name} さん`;
+    successEl.style.display='block';
+    document.getElementById('signupName').value='';
+    document.getElementById('signupEmail').value='';
+    document.getElementById('signupPass').value='';
+    setTimeout(()=>switchAuthTab('login',document.querySelector('.auth-tab')),2000);
+  }catch(e){
+    if(user&&!fsSaved){try{await user.delete();}catch{}}
+    const msgs={'auth/email-already-in-use':'このメールアドレスはすでに登録済みです','auth/invalid-email':'メールアドレスの形式が正しくありません','auth/weak-password':'パスワードが弱すぎます（6文字以上）','auth/network-request-failed':'通信エラー','auth/too-many-requests':'しばらく経ってから再試行してください'};
+    errEl.textContent=msgs[e.code]||e.message;errEl.style.display='block';
+  }finally{btn.disabled=false;btn.textContent='アカウント作成';}
+}
+
+// ================================================================
+// [PokerLog] Auth — emailLogin (fixed)
+// ================================================================
+async function emailLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginErr');
+  const btn=document.getElementById('btnLogin');
+  errEl.style.display='none';
+  if(!email||!pass){errEl.textContent='メールアドレスとパスワードを入力してください';errEl.style.display='block';return;}
+  btn.disabled=true;btn.textContent='ログイン中...';
+  try{
+    const cred=await auth.signInWithEmailAndPassword(email,pass);
+    await cred.user.reload();
+  }catch(e){
+    const msgs={'auth/user-not-found':'このメールアドレスは登録されていません','auth/wrong-password':'パスワードが正しくありません','auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません','auth/invalid-email':'メールアドレスの形式が正しくありません','auth/user-disabled':'このアカウントは無効化されています','auth/too-many-requests':'しばらく経ってから再試行してください','auth/network-request-failed':'通信エラー'};
+    errEl.textContent=msgs[e.code]||e.message;errEl.style.display='block';
+  }finally{btn.disabled=false;btn.textContent='ログイン';}
+}
+
+// ================================================================
+// [PokerLog] Auth — Google login
+// ================================================================
+async function googleLogin(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  try{
+    const cred=await auth.signInWithPopup(provider);
+    // Google accounts are always verified by Google
+  }catch(e){if(e.code!=='auth/popup-closed-by-user')notify('Googleログイン失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] Auth — resendVerification
+// ================================================================
+async function resendVerification(){
+  // メール認証は不要になったため、この機能は無効化
+  const errEl=document.getElementById('loginErr');
+  errEl.style.color='var(--text2)';
+  errEl.textContent='メール認証は不要です。そのままログインしてください。';
+  errEl.style.display='block';
+}
+
+// ================================================================
+// [PokerLog] Auth — resetPassword
+// ================================================================
+async function resetPassword(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const errEl=document.getElementById('loginErr');
+  if(!email){errEl.textContent='メールアドレスを入力してください';errEl.style.display='block';return;}
+  try{
+    await auth.sendPasswordResetEmail(email);
+    errEl.style.color='var(--green)';errEl.textContent=`パスワードリセットメールを ${email} に送信しました`;errEl.style.display='block';
+  }catch(e){errEl.style.color='';errEl.textContent=e.message;errEl.style.display='block';}
+}
+
+// ================================================================
+// [PokerLog] Auth — onAuthStateChanged (fixed)
+// ================================================================
+auth.onAuthStateChanged(async user=>{
+  if(skipAuthStateCheck)return;
+  if(user){
+    try{await user.reload();}catch{}
+    currentUser=user;
+    updateDebugBadge('auth','👤✓');
+    document.getElementById('authScreen').style.display='none';
+    document.getElementById('mainApp').style.display='block';
+    const navName=document.getElementById('navName');
+    if(navName)navName.textContent=user.displayName||user.email||'ユーザー';
+    const navAv=document.getElementById('navAvatar');
+    if(navAv)navAv.textContent=(user.displayName||'?').charAt(0).toUpperCase();
+    await initUserData();
+    fetchRates();
+    // Firestore接続テスト（ログイン直後に実行）
+    setTimeout(testFirestoreWrite,2000);
+  }else{
+    currentUser=null;updateDebugBadge('auth','👤-');
+    document.getElementById('mainApp').style.display='none';
+    document.getElementById('authScreen').style.display='flex';
+  }
+});
+
+// ================================================================
+// [PokerLog] Page Visibility sync
+// ================================================================
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentUser)fetchFromFirestore();});
+
+// ================================================================
+// [PokerLog] Logout
+// ================================================================
+function logout(){
+  if(!confirm('ログアウトしますか？'))return;
+  if(unsubDm){unsubDm();unsubDm=null;}
+  auth.signOut().catch(()=>{});
+  currentUser=null;sessions=[];txList_data=[];crTxList_data=[];expList_data=[];
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+}
+
+// ================================================================
+// [PokerLog] Session form
+// ================================================================
+function updatePreview(){
+  const buyin=parseFloat(document.getElementById('fBuyin')?.value)||0;
+  const cashout=parseFloat(document.getElementById('fCashout')?.value)||0;
+  const cur=document.getElementById('fCurrency')?.value||'JPY';
+  const profit=cashout-buyin;
+  const profitJPY=convertToJPY(profit,cur);
+  const valEl=document.getElementById('pnlPreviewVal');
+  const jpyEl=document.getElementById('pnlPreviewJpy');
+  if(!valEl)return;
+  const sym=cur==='JPY'?'¥':`${cur} `;
+  const sign=profit>=0?'+':'';
+  valEl.textContent=`${sign}${sym}${Math.abs(profit).toLocaleString()}`;
+  valEl.style.color=profit>0?'var(--green)':profit<0?'var(--red)':'var(--text3)';
+  if(jpyEl&&cur!=='JPY')jpyEl.textContent=` (≈ ${sign}¥${Math.abs(profitJPY).toLocaleString()})`;
+  else if(jpyEl)jpyEl.textContent='';
+}
+
+function onCurrencyChange(){
+  updatePreview();
+  const cur=document.getElementById('fCurrency')?.value||'JPY';
+  const heroCur=document.getElementById('heroCur');
+  if(heroCur)heroCur.textContent=cur;
+}
+
+function setBuyinSource(type,el){
+  buyinSource=type;
+  document.querySelectorAll('.source-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const detail=document.getElementById('buyinSourceDetail');
+  const balLink=document.getElementById('balanceLink');
+  if(type==='own'){if(detail)detail.textContent='';if(balLink)balLink.style.display='none';}
+  else if(type==='contract'){if(detail)detail.textContent='バイイン額が契約残高から自動差し引きされます';if(balLink)balLink.style.display='none';}
+  else if(type==='pwc'){if(detail)detail.textContent='PWC残高からバイイン額が差し引きされます';if(balLink){balLink.style.display='';const bd=document.getElementById('balLinkDetail');if(bd)bd.textContent='PWC残高と自動連動します';}}
+  else if(type==='pt'){if(detail)detail.textContent='PT残高からバイイン額が差し引きされます';if(balLink){balLink.style.display='';const bd=document.getElementById('balLinkDetail');if(bd)bd.textContent='PT残高と自動連動します';}}
+}
+
+function toggleExpenseLink(){
+  const cb=document.getElementById('fAddExpense');
+  const fields=document.getElementById('expenseLinkFields');
+  if(fields)fields.style.display=cb?.checked?'':'none';
+}
+
+function addSession(){
+  const date=document.getElementById('fDate')?.value||new Date().toISOString().slice(0,10);
+  const cur=document.getElementById('fCurrency')?.value||'JPY';
+  const game=document.getElementById('fGame')?.value||'No Limit Hold\'em';
+  const tournament=document.getElementById('fTournament')?.value?.trim()||'';
+  const buyin=parseFloat(document.getElementById('fBuyin')?.value)||0;
+  const cashout=parseFloat(document.getElementById('fCashout')?.value)||0;
+  const hours=parseFloat(document.getElementById('fHours')?.value)||0;
+  const venue=document.getElementById('fVenue')?.value?.trim()||'';
+  const note=document.getElementById('fNote')?.value?.trim()||'';
+  const profit=cashout-buyin;
+  const profitJPY=convertToJPY(profit,cur);
+  const buyinJPY=convertToJPY(buyin,cur);
+  const id=Date.now().toString();
+  const data={id,date,cur,game,tournament,buyin,cashout,hours,venue,note,profit,profitJPY,buyinJPY,source:buyinSource,updatedAt:Date.now()};
+
+  // 連動: 経費追加
+  if(document.getElementById('fAddExpense')?.checked){
+    const entrance=parseFloat(document.getElementById('fEntranceFee')?.value)||0;
+    const drink=parseFloat(document.getElementById('fDrinkFee')?.value)||0;
+    const drinkQty=parseInt(document.getElementById('fDrinkQty')?.value)||0;
+    const other=parseFloat(document.getElementById('fOtherFee')?.value)||0;
+    if(entrance>0){const eid=id+'_e1';const ed={id:eid,date,type:'entrance',amount:entrance,venue,memo:'セッション連動',auto:true,updatedAt:Date.now()};expList_data.unshift(ed);lsSet('local_expenses',expList_data);saveDoc('expenses',eid,ed);}
+    if(drink>0){const eid=id+'_e2';const ed={id:eid,date,type:'drink',amount:drink*drinkQty||drink,venue,memo:`ドリンク×${drinkQty||1}`,auto:true,updatedAt:Date.now()};expList_data.unshift(ed);lsSet('local_expenses',expList_data);saveDoc('expenses',eid,ed);}
+    if(other>0){const eid=id+'_e3';const ed={id:eid,date,type:'other',amount:other,venue,memo:'その他',auto:true,updatedAt:Date.now()};expList_data.unshift(ed);lsSet('local_expenses',expList_data);saveDoc('expenses',eid,ed);}
+  }
+  // 連動: PWC/PT差し引き
+  if(buyinSource==='pwc'||buyinSource==='pt'){
+    const txCur=buyinSource.toUpperCase();
+    const tid=id+'_t';
+    const td={id:tid,date,currency:txCur,type:'used',amount:buyin,memo:`セッション連動: ${venue||game}`,auto:true,updatedAt:Date.now()};
+    txList_data.unshift(td);lsSet('local_txs',txList_data);saveDoc('txs',tid,td);
+  }
+  // 連動: 契約差し引き
+  if(buyinSource==='contract'){
+    const crid=id+'_cr';
+    const crd={id:crid,date,type:'used',amount:buyinJPY,memo:`セッション連動: ${venue||game}`,auto:true,updatedAt:Date.now()};
+    crTxList_data.unshift(crd);lsSet('local_crTxs',crTxList_data);saveDoc('crTxs',crid,crd);
+  }
+
+  sessions.unshift(data);
+  lsSet('local_sessions',sessions);
+  saveDoc('sessions',id,data);
+
+  // フォームクリア
+  ['fDate','fTournament','fBuyin','fCashout','fHours','fVenue','fNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('fEntranceFee')&&(document.getElementById('fEntranceFee').value='');
+  document.getElementById('fDrinkFee')&&(document.getElementById('fDrinkFee').value='');
+  document.getElementById('fDrinkQty')&&(document.getElementById('fDrinkQty').value='');
+  document.getElementById('fOtherFee')&&(document.getElementById('fOtherFee').value='');
+  document.getElementById('fAddExpense')&&(document.getElementById('fAddExpense').checked=false);
+  document.getElementById('expenseLinkFields')&&(document.getElementById('expenseLinkFields').style.display='none');
+  if(document.getElementById('pnlPreviewVal'))document.getElementById('pnlPreviewVal').textContent='';
+  setBuyinSource('own',document.querySelector('.source-btn'));
+
+  renderSessions();renderStats();renderBalance();renderCost();
+  notify('セッションを記録しました');
+}
+
+function deleteSession(id){
+  if(!confirm('このセッションを削除しますか？'))return;
+  sessions=sessions.filter(s=>s.id!==id);
+  lsSet('local_sessions',sessions);
+  deleteDoc('sessions',id);
+  renderSessions();renderStats();renderBalance();renderCost();
+  notify('削除しました');
+}
+
+// ================================================================
+// [PokerLog] Session filter & render
+// ================================================================
+function setFilter(type,el){
+  currentFilter=type;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderSessions();
+}
+
+function renderSessions(){
+  const histSection=document.getElementById('histSection');
+  const list=document.getElementById('sessionsList');
+  if(!list)return;
+  let data=[...sessions];
+  if(currentFilter==='win')data=data.filter(s=>s.profit>0);
+  else if(currentFilter==='loss')data=data.filter(s=>s.profit<0);
+  else if(currentFilter==='tourn')data=data.filter(s=>s.tournament);
+  else if(currentFilter==='linked')data=data.filter(s=>s.source&&s.source!=='own');
+  if(histSection)histSection.style.display=sessions.length?'':'none';
+  if(!data.length){list.innerHTML='<div class="empty">該当セッションがありません</div>';return;}
+  list.innerHTML=data.slice(0,60).map(s=>{
+    const sym=s.cur==='JPY'?'¥':`${s.cur} `;
+    const sign=s.profit>=0?'+':'';
+    const cls=s.profit>0?'pos':s.profit<0?'neg':'';
+    const jpyNote=(s.cur!=='JPY'&&s.profitJPY!=null)?`<span style="font-size:10px;color:var(--text3)"> (≈ ${s.profit>=0?'+':''}¥${Math.abs(s.profitJPY).toLocaleString()})</span>`:'';
+    return `<div class="item-row">
+      <div class="item-info">
+        <div class="item-title">${escHtml(s.venue||s.game||'—')} <span style="font-size:11px;color:var(--text3)">${escHtml(s.game)}</span></div>
+        <div class="item-sub">${s.date}${s.hours?` / ${s.hours}h`:''} ${s.tournament?`/ ${escHtml(s.tournament)}`:''}${s.note?` / ${escHtml(s.note)}`:''}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount ${cls}">${sign}${sym}${Math.abs(s.profit).toLocaleString()}${jpyNote}</div>
+        <button class="btn-sm btn-danger" style="margin-top:4px;font-size:10px" onclick="deleteSession('${s.id}')">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// [PokerLog] Stats
+// ================================================================
+function renderStats(){
+  const jpy=sessions.filter(s=>s.cur==='JPY');
+  const all=sessions;
+  const totalProfitJPY=all.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  const totalHours=all.reduce((a,s)=>a+(s.hours||0),0);
+  const wins=all.filter(s=>s.profit>0).length;
+  const wr=all.length?Math.round(wins/all.length*100):0;
+  const hourly=totalHours?Math.round(totalProfitJPY/totalHours):0;
+  const profits=all.map(s=>s.profitJPY??s.profit??0);
+  const best=profits.length?Math.max(...profits):0;
+  const worst=profits.length?Math.min(...profits):0;
+  const sign=totalProfitJPY>=0?'+':'';
+  const col=totalProfitJPY>=0?'var(--green)':'var(--red)';
+  const setT=(id,v,c)=>{const el=document.getElementById(id);if(el){el.textContent=v;if(c)el.style.color=c;}};
+  setT('sNet',`${sign}¥${totalProfitJPY.toLocaleString()}`,col);
+  setT('sNetJpy','JPY換算');
+  setT('sWR',`${wr}%`);
+  setT('sCnt',all.length);
+  setT('sHourly',`¥${hourly.toLocaleString()}/h`);
+  setT('sBest',best>=0?`+¥${best.toLocaleString()}`:`¥${best.toLocaleString()}`,'var(--green)');
+  setT('sWorst',`¥${worst.toLocaleString()}`,'var(--red)');
+  setT('sideNet',`${sign}¥${totalProfitJPY.toLocaleString()}`,col);
+  setT('sideHourly',`¥${hourly.toLocaleString()}/h`);
+  setT('sideBest',`+¥${best.toLocaleString()}`,'var(--green)');
+  setT('sideWorst',`¥${worst.toLocaleString()}`,'var(--red)');
+  setT('profileName',profile.displayName||currentUser?.displayName||'—');
+  setT('profileSub',`${all.length}セッション / 勝率${wr}%`);
+  const av=document.getElementById('profileAvatar');
+  if(av)av.textContent=(profile.displayName||currentUser?.displayName||'?').charAt(0).toUpperCase();
+  setT('backupSessionCount',all.length+'件');
+  setT('backupLastUpdate',all[0]?.date||'—');
+  setT('heroSync',isFirebaseReady?'Active':'Local');
+  // Hero section stats
+  setT('heroNet',`${sign}¥${totalProfitJPY.toLocaleString()}`,col);
+  setT('heroWr',`${wr}%`);
+  setT('heroSessions',all.length);
+  const heroMeta=document.getElementById('heroMeta');
+  if(heroMeta)heroMeta.textContent=all.length?`${all.length}セッション / ${totalHours.toFixed(1)}h / 時給¥${hourly.toLocaleString()}`:'稼働データが蓄積されるほど、ダッシュボードが鮮明になります。';
+}
+
+// ================================================================
+// [PokerLog] Balance (PWC/PT transactions)
+// ================================================================
+function addTx(){
+  const date=document.getElementById('tDate')?.value||new Date().toISOString().slice(0,10);
+  const cur=document.getElementById('tCurrency')?.value||'PWC';
+  const type=document.getElementById('tType')?.value||'deposit';
+  const amount=parseFloat(document.getElementById('tAmount')?.value)||0;
+  const memo=document.getElementById('tMemo')?.value?.trim()||'';
+  if(!amount){notify('金額を入力してください','err');return;}
+  const id=Date.now().toString();
+  const data={id,date,currency:cur,type,amount,memo,updatedAt:Date.now()};
+  txList_data.unshift(data);lsSet('local_txs',txList_data);saveDoc('txs',id,data);
+  document.getElementById('tAmount').value='';document.getElementById('tMemo').value='';
+  renderBalance();notify('取引を記録しました');
+}
+
+function deleteTx(id){
+  if(!confirm('削除しますか？'))return;
+  txList_data=txList_data.filter(t=>t.id!==id);
+  lsSet('local_txs',txList_data);deleteDoc('txs',id);renderBalance();notify('削除しました');
+}
+
+function setTxFilter(type,el){
+  currentTxFilter=type;
+  document.querySelectorAll('#txSection .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderBalance();
+}
+
+function renderBalance(){
+  const pwcSessions=sessions.filter(s=>s.cur==='PWC');
+  const ptSessions=sessions.filter(s=>s.cur==='PT');
+  const pwcTxs=txList_data.filter(t=>t.currency==='PWC');
+  const ptTxs=txList_data.filter(t=>t.currency==='PT');
+  const calcBal=(txs,ses,cur)=>{
+    const inTypes=['deposit','bonus'];
+    const outTypes=['withdraw','used','fee'];
+    const inAmt=txs.filter(t=>inTypes.includes(t.type)).reduce((a,t)=>a+t.amount,0);
+    const outAmt=txs.filter(t=>outTypes.includes(t.type)).reduce((a,t)=>a+t.amount,0);
+    const sesProfit=ses.reduce((a,s)=>a+s.profit,0);
+    return inAmt-outAmt+sesProfit;
+  };
+  const pwcBal=calcBal(pwcTxs,pwcSessions,'PWC');
+  const ptBal=calcBal(ptTxs,ptSessions,'PT');
+  const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setT('balPWC',`${pwcBal.toLocaleString()} PWC`);
+  setT('balPWCSub',`セッション: ${pwcSessions.length}件`);
+  setT('balPWCJpy',`≈ ¥${convertToJPY(pwcBal,'PWC').toLocaleString()}`);
+  setT('balPT',`${ptBal.toLocaleString()} PT`);
+  setT('balPTSub',`セッション: ${ptSessions.length}件`);
+  setT('balPTJpy',`≈ ¥${convertToJPY(ptBal,'PT').toLocaleString()}`);
+
+  const txSection=document.getElementById('txSection');
+  const txListEl=document.getElementById('txList');
+  if(!txListEl)return;
+  let data=txList_data;
+  if(currentTxFilter!=='all'&&currentTxFilter!=='auto')data=data.filter(t=>t.currency===currentTxFilter);
+  if(currentTxFilter==='fee')data=data.filter(t=>t.type==='fee');
+  if(currentTxFilter==='auto')data=data.filter(t=>t.auto);
+  if(txSection)txSection.style.display=txList_data.length?'':'none';
+  if(!data.length){txListEl.innerHTML='<div class="empty">取引履歴がありません</div>';return;}
+  const typeLabels={deposit:'入金',withdraw:'出金',fee:'手数料',transfer:'トランスファー',bonus:'ボーナス',used:'使用'};
+  txListEl.innerHTML=data.slice(0,60).map(t=>{
+    const isIn=['deposit','bonus'].includes(t.type);
+    return `<div class="item-row">
+      <div class="item-info">
+        <div class="item-title">${typeLabels[t.type]||t.type} <span style="font-size:11px;color:var(--text3)">${t.currency}</span>${t.auto?'<span style="font-size:10px;color:var(--text3);margin-left:4px">自動</span>':''}</div>
+        <div class="item-sub">${t.date}${t.memo?' / '+escHtml(t.memo):''}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount ${isIn?'pos':'neg'}">${isIn?'+':'-'}${t.amount.toLocaleString()} ${t.currency}</div>
+        ${!t.auto?`<button class="btn-sm btn-danger" style="margin-top:4px;font-size:10px" onclick="deleteTx('${t.id}')">削除</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// [PokerLog] Contract
+// ================================================================
+function saveContractInfo(){
+  const name=document.getElementById('cName')?.value?.trim()||'';
+  const team=document.getElementById('cTeam')?.value?.trim()||'';
+  const start=document.getElementById('cStart')?.value||'';
+  const end=document.getElementById('cEnd')?.value||'';
+  contractInfo={name,team,start,end,updatedAt:Date.now()};
+  lsSet('local_ci',contractInfo);
+  if(currentUser&&isFirebaseReady)db.collection('userData').doc(currentUser.uid).collection('contractInfo').doc('main').set(contractInfo).catch(()=>{});
+  renderContract();notify('契約情報を保存しました');
+}
+
+function addContractTx(){
+  const date=document.getElementById('crDate')?.value||new Date().toISOString().slice(0,10);
+  const type=document.getElementById('crType')?.value||'received';
+  const amount=parseFloat(document.getElementById('crAmount')?.value)||0;
+  const memo=document.getElementById('crMemo')?.value?.trim()||'';
+  if(!amount){notify('金額を入力してください','err');return;}
+  const id=Date.now().toString();
+  const data={id,date,type,amount,memo,updatedAt:Date.now()};
+  crTxList_data.unshift(data);lsSet('local_crTxs',crTxList_data);saveDoc('crTxs',id,data);
+  document.getElementById('crAmount').value='';document.getElementById('crMemo').value='';
+  renderContract();notify('記録しました');
+}
+
+function renderContract(){
+  const received=crTxList_data.filter(t=>['received','bonus'].includes(t.type)).reduce((a,t)=>a+t.amount,0);
+  const used=crTxList_data.filter(t=>['used','expense'].includes(t.type)).reduce((a,t)=>a+t.amount,0);
+  const autoUsed=sessions.filter(s=>s.source==='contract').reduce((a,s)=>a+(s.buyinJPY||0),0);
+  const totalUsed=used+autoUsed;
+  const balance=received-totalUsed;
+  const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setT('contractName',contractInfo.name||'契約未設定');
+  setT('contractTeam',contractInfo.team||'チーム名を設定してください');
+  setT('cBalance',`¥${balance.toLocaleString()}`);
+  setT('cReceived',`+¥${received.toLocaleString()}`);
+  setT('cUsed',`-¥${totalUsed.toLocaleString()}`);
+  const prog=document.getElementById('cProgress');
+  if(prog)prog.style.width=(received>0?Math.min(100,Math.round(totalUsed/received*100)):0)+'%';
+  const crTxSection=document.getElementById('crTxSection');
+  const crListEl=document.getElementById('crTxList');
+  if(!crListEl)return;
+  if(crTxSection)crTxSection.style.display=crTxList_data.length?'':'none';
+  const typeLabels={received:'受取',used:'使用',bonus:'ボーナス',expense:'経費精算'};
+  crListEl.innerHTML=crTxList_data.slice(0,40).map(t=>{
+    const isIn=['received','bonus'].includes(t.type);
+    return `<div class="item-row">
+      <div class="item-info">
+        <div class="item-title">${typeLabels[t.type]||t.type}${t.auto?'<span style="font-size:10px;color:var(--text3);margin-left:4px">自動</span>':''}</div>
+        <div class="item-sub">${t.date}${t.memo?' / '+escHtml(t.memo):''}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount ${isIn?'pos':'neg'}">${isIn?'+':'-'}¥${t.amount.toLocaleString()}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// [PokerLog] Expense / Cost
+// ================================================================
+function addExpense(){
+  const date=document.getElementById('eDate')?.value||new Date().toISOString().slice(0,10);
+  const type=document.getElementById('eType')?.value||'other';
+  const amount=parseFloat(document.getElementById('eAmount')?.value)||0;
+  const venue=document.getElementById('eVenue')?.value?.trim()||'';
+  const memo=document.getElementById('eMemo')?.value?.trim()||'';
+  const drinkQty=parseInt(document.getElementById('eDrinkQty')?.value)||0;
+  if(!amount){notify('金額を入力してください','err');return;}
+  const id=Date.now().toString();
+  const data={id,date,type,amount,venue,memo,drinkQty,updatedAt:Date.now()};
+  expList_data.unshift(data);lsSet('local_expenses',expList_data);saveDoc('expenses',id,data);
+  document.getElementById('eAmount').value='';document.getElementById('eMemo').value='';document.getElementById('eDrinkQty').value='';
+  renderCost();notify('経費を追加しました');
+}
+
+function deleteExpense(id){
+  if(!confirm('削除しますか？'))return;
+  expList_data=expList_data.filter(e=>e.id!==id);
+  lsSet('local_expenses',expList_data);deleteDoc('expenses',id);renderCost();notify('削除しました');
+}
+
+function setExpFilter(type,el){
+  currentExpFilter=type;
+  document.querySelectorAll('#expSection .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderCost();
+}
+
+function renderCost(){
+  const entrance=expList_data.filter(e=>e.type==='entrance').reduce((a,e)=>a+e.amount,0);
+  const drink=expList_data.filter(e=>e.type==='drink').reduce((a,e)=>a+e.amount,0);
+  const other=expList_data.filter(e=>!['entrance','drink'].includes(e.type)).reduce((a,e)=>a+e.amount,0);
+  const total=entrance+drink+other;
+  const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setT('costEntrance',`¥${entrance.toLocaleString()}`);setT('costDrink',`¥${drink.toLocaleString()}`);
+  setT('costOther',`¥${other.toLocaleString()}`);setT('costTotal',`¥${total.toLocaleString()}`);
+  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  setT('costNetNote',`経費差し引き後: ¥${(totalProfit-total).toLocaleString()}`);
+  const expSection=document.getElementById('expSection');
+  const expListEl=document.getElementById('expList');
+  if(!expListEl)return;
+  if(expSection)expSection.style.display=expList_data.length?'':'none';
+  let data=expList_data;
+  if(currentExpFilter!=='all'&&currentExpFilter!=='auto')data=data.filter(e=>e.type===currentExpFilter);
+  if(currentExpFilter==='auto')data=data.filter(e=>e.auto);
+  const typeLabels={entrance:'エントランス',drink:'ドリンク',transport:'交通費',hotel:'宿泊費',food:'飲食費',other:'その他'};
+  expListEl.innerHTML=data.slice(0,60).map(e=>`
+    <div class="item-row">
+      <div class="item-info">
+        <div class="item-title">${typeLabels[e.type]||e.type}${e.auto?'<span style="font-size:10px;color:var(--text3);margin-left:4px">自動</span>':''}${e.drinkQty?` ×${e.drinkQty}`:''}</div>
+        <div class="item-sub">${e.date}${e.venue?' / '+escHtml(e.venue):''}${e.memo?' / '+escHtml(e.memo):''}</div>
+      </div>
+      <div class="item-right">
+        <div class="item-amount neg">-¥${e.amount.toLocaleString()}</div>
+        ${!e.auto?`<button class="btn-sm btn-danger" style="margin-top:4px;font-size:10px" onclick="deleteExpense('${e.id}')">削除</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ================================================================
+// [PokerLog] Account / Profile
+// ================================================================
+function renderAccount(){
+  document.getElementById('rHandle')&&(document.getElementById('rHandle').value=profile.handle||'');
+  document.getElementById('rDisplayName')&&(document.getElementById('rDisplayName').value=profile.displayName||currentUser?.displayName||'');
+  document.getElementById('rBio')&&(document.getElementById('rBio').value=profile.bio||'');
+  document.getElementById('rTwitter')&&(document.getElementById('rTwitter').value=profile.twitter||'');
+}
+
+async function saveProfile(){
+  if(!currentUser)return;
+  const handle=document.getElementById('rHandle')?.value?.trim()||'';
+  const displayName=document.getElementById('rDisplayName')?.value?.trim()||'';
+  const bio=document.getElementById('rBio')?.value?.trim()||'';
+  const twitter=document.getElementById('rTwitter')?.value?.trim()||'';
+  if(!displayName){notify('表示名は必須です','err');return;}
+  try{
+    await currentUser.updateProfile({displayName});
+    profile={handle,displayName,bio,twitter};
+    await db.collection('users').doc(currentUser.uid).set({handle,displayName,bio,twitter},{merge:true});
+    lsSet('local_profile',profile);
+    const navName=document.getElementById('navName');if(navName)navName.textContent=displayName;
+    const profileNameEl=document.getElementById('profileName');if(profileNameEl)profileNameEl.textContent=displayName;
+    notify('プロフィールを更新しました');
+  }catch(e){notify('更新失敗: '+e.message,'err');}
+}
+
+async function changePassword(){
+  const p1=document.getElementById('newPass1')?.value||'';
+  const p2=document.getElementById('newPass2')?.value||'';
+  if(p1.length<6){notify('6文字以上のパスワードを入力してください','err');return;}
+  if(p1!==p2){notify('パスワードが一致しません','err');return;}
+  try{await currentUser.updatePassword(p1);document.getElementById('newPass1').value='';document.getElementById('newPass2').value='';notify('パスワードを変更しました');}
+  catch(e){if(e.code==='auth/requires-recent-login')notify('セキュリティのため再ログインが必要です','warn');else notify('変更失敗: '+e.message,'err');}
+}
+
+function confirmDeleteAccount(){
+  if(!confirm('アカウントを削除すると全データが消去されます。本当に削除しますか？'))return;
+  if(!confirm('最終確認: 削除します。この操作は取り消せません。'))return;
+  deleteAccount();
+}
+async function deleteAccount(){
+  if(!currentUser)return;
+  try{
+    const uid=currentUser.uid;
+    const cols=['sessions','txs','crTxs','expenses'];
+    for(const col of cols){const snap=await db.collection('userData').doc(uid).collection(col).get();const batch=db.batch();snap.docs.forEach(d=>batch.delete(d.ref));if(snap.docs.length)await batch.commit();}
+    await db.collection('users').doc(uid).delete();
+    await currentUser.delete();
+    ['local_sessions','local_txs','local_crTxs','local_expenses','local_ci','local_profile'].forEach(k=>localStorage.removeItem(k));
+    notify('アカウントを削除しました');
+  }catch(e){if(e.code==='auth/requires-recent-login')notify('セキュリティのため再ログインが必要です','warn');else notify('削除失敗','err');}
+}
+
+function exportData(){
+  const data={sessions,txs:txList_data,crTxs:crTxList_data,expenses:expList_data,contractInfo,profile,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`pokerlog_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(url);
+  notify('エクスポートしました');
+}
+
+function shareToTwitter(){
+  const totalProfit=sessions.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  const sign=totalProfit>=0?'+':'';
+  const text=`PokerLog: 累計収支 ${sign}¥${totalProfit.toLocaleString()} (${sessions.length}セッション) #PokerLog #ポーカー`;
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,'_blank');
+}
+
+// ================================================================
+// [PokerLog] BBS
+// ================================================================
+function setBbsCat(cat,el){
+  currentBbsCat=cat;
+  document.querySelectorAll('.bbs-cat-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  loadBbs();
+}
+
+async function loadBbs(){
+  if(!isFirebaseReady||!currentUser)return;
+  const listEl=document.getElementById('bbsList');
+  if(!listEl)return;
+  try{
+    let q=db.collection('bbs').orderBy('createdAt','desc').limit(80);
+    if(currentBbsCat!=='all')q=q.where('cat','==',currentBbsCat);
+    const snap=await q.get();
+    const msgs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!msgs.length){listEl.innerHTML='<div class="empty">投稿がありません。最初の投稿をしてみましょう！</div>';return;}
+    listEl.innerHTML=msgs.map(m=>{
+      const isOwn=currentUser&&m.uid===currentUser.uid;
+      const t=m.createdAt?new Date(m.createdAt.seconds*1000).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      const catLabel={info:'情報',result:'結果',question:'質問',tournament:'大会',strategy:'戦略',other:'雑談'}[m.cat]||m.cat||'';
+      return `<div class="bbs-item">
+        <div class="bbs-meta">
+          <span class="bbs-author">${escHtml(m.handle||m.displayName||'匿名')}</span>
+          ${catLabel?`<span style="font-size:10px;background:rgba(201,168,76,.15);color:var(--gold);border-radius:10px;padding:1px 6px;margin-left:4px">${catLabel}</span>`:''}
+          <span class="bbs-time">${t}</span>
+          ${!isOwn?`<button class="btn-sm" style="font-size:10px;padding:1px 5px;margin-left:4px" onclick="openReport('${escHtml(m.handle||m.displayName||'匿名')}')">通報</button>`:''}
+          ${isOwn?`<button class="btn-sm btn-danger" style="font-size:10px;padding:1px 5px;margin-left:4px" onclick="deleteBbsPost('${m.id}')">削除</button>`:''}
+        </div>
+        ${m.title?`<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">${escHtml(m.title)}</div>`:''}
+        <div class="bbs-text">${escHtml(m.body||m.text||'')}</div>
+      </div>`;
+    }).join('');
+  }catch(e){console.error('[PokerLog] loadBbs:',e);listEl.innerHTML='<div class="empty">読み込みエラー</div>';}
+}
+
+async function addBbsPost(){
+  const cat=document.getElementById('bbsNewCat')?.value||'other';
+  const title=document.getElementById('bbsNewTitle')?.value?.trim()||'';
+  const body=document.getElementById('bbsNewBody')?.value?.trim()||'';
+  if(!body||!currentUser){notify('本文を入力してください','err');return;}
+  if(body.length>1000){notify('1000文字以内で入力してください','err');return;}
+  const btn=document.getElementById('btnBbsPost');
+  if(btn){btn.disabled=true;btn.textContent='投稿中...';}
+  try{
+    await db.collection('bbs').add({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'匿名',displayName:currentUser.displayName||'匿名',cat,title,body,createdAt:_fsts()});
+    document.getElementById('bbsNewTitle').value='';document.getElementById('bbsNewBody').value='';
+    await loadBbs();notify('投稿しました');
+  }catch(e){notify('投稿失敗','err');}
+  finally{if(btn){btn.disabled=false;btn.textContent='♠ 投稿する';}}
+}
+
+async function deleteBbsPost(id){
+  if(!confirm('削除しますか？'))return;
+  try{await db.collection('bbs').doc(id).delete();await loadBbs();notify('削除しました');}
+  catch{notify('削除失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] DM
+// ================================================================
+async function loadDmConvos(){
+  const listEl=document.getElementById('dmUserList');
+  if(!listEl||!currentUser||!isFirebaseReady)return;
+  const myHandle=document.getElementById('dmMyHandle');
+  if(myHandle)myHandle.textContent=profile.handle||currentUser.displayName||'';
+  try{
+    const snap=await db.collection('dmConvos').where('members','array-contains',currentUser.uid).orderBy('lastAt','desc').limit(30).get();
+    if(!snap.docs.length){listEl.innerHTML='<div style="padding:12px;font-size:12px;color:var(--text3)">まだDMはありません</div>';return;}
+    listEl.innerHTML=snap.docs.map(d=>{
+      const data=d.data();
+      const partner=data.members.find(m=>m!==currentUser.uid);
+      const partnerName=data.names?.[partner]||partner;
+      const lastMsg=data.lastMsg||'';
+      return `<div class="dm-user-item ${activeDmHandle===partnerName?'active':''}" onclick="openDm('${partner}','${escHtml(partnerName)}')">
+        <div class="dm-user-name">${escHtml(partnerName)}</div>
+        <div class="dm-user-preview">${escHtml(lastMsg.slice(0,30))}</div>
+      </div>`;
+    }).join('');
+  }catch(e){listEl.innerHTML='<div style="padding:12px;font-size:12px;color:var(--text3)">読み込みエラー</div>';}
+}
+
+async function startNewDm(){
+  const handle=document.getElementById('dmNewTarget')?.value?.trim();
+  if(!handle){notify('宛先ハンドル名を入力してください','err');return;}
+  try{
+    const snap=await db.collection('users').where('handle','==',handle).limit(1).get();
+    if(snap.empty){notify('ユーザーが見つかりません','err');return;}
+    const uid=snap.docs[0].id;
+    const name=snap.docs[0].data().displayName||handle;
+    document.getElementById('dmNewTarget').value='';
+    await openDm(uid,name);
+  }catch(e){notify('エラー: '+e.message,'err');}
+}
+
+async function openDm(uid,name){
+  activeDmHandle=name;activeDmUid=uid;
+  const hdr=document.getElementById('dmHeader');
+  const hdrActions=document.getElementById('dmHeaderActions');
+  if(hdr)hdr.innerHTML=`<span style="font-weight:600;color:var(--text)">${escHtml(name)}</span><div id="dmHeaderActions"><button class="report-btn" onclick="openReport('${escHtml(name)}')">⚑ 通報</button></div>`;
+  const chatId=[currentUser.uid,uid].sort().join('_');
+  if(unsubDm){unsubDm();unsubDm=null;}
+  const msgsEl=document.getElementById('dmMessages');
+  unsubDm=db.collection('dms').doc(chatId).collection('messages').orderBy('createdAt','asc').limit(100).onSnapshot(snap=>{
+    const msgs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!msgsEl)return;
+    msgsEl.innerHTML=msgs.map(m=>{
+      const isOwn=m.uid===currentUser.uid;
+      const t=m.createdAt?new Date(m.createdAt.seconds*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'';
+      return `<div class="dm-bubble ${isOwn?'own':'other'}"><div class="dm-text">${escHtml(m.text)}</div><div class="dm-time">${t}</div></div>`;
+    }).join('');
+    msgsEl.scrollTop=msgsEl.scrollHeight;
+  });
+}
+
+async function sendDm(){
+  const input=document.getElementById('dmInput');
+  const text=input?.value?.trim();
+  if(!text||!currentUser||!activeDmUid)return;
+  const chatId=[currentUser.uid,activeDmUid].sort().join('_');
+  try{
+    const batch=db.batch();
+    const msgRef=db.collection('dms').doc(chatId).collection('messages').doc();
+    batch.set(msgRef,{uid:currentUser.uid,displayName:currentUser.displayName||'',text,createdAt:_fsts()});
+    const convoRef=db.collection('dmConvos').doc(chatId);
+    batch.set(convoRef,{members:[currentUser.uid,activeDmUid],names:{[currentUser.uid]:currentUser.displayName||'',[ activeDmUid]:activeDmHandle||''},lastMsg:text,lastAt:_fsts()},{merge:true});
+    await batch.commit();
+    input.value='';
+  }catch(e){notify('送信失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] Ranking
+// ================================================================
+async function loadRanking(){
+  const loadingEl=document.getElementById('rankingLoading');
+  const tableEl=document.getElementById('rankTable');
+  const emptyEl=document.getElementById('rankEmpty');
+  if(loadingEl)loadingEl.style.display='block';
+  if(tableEl)tableEl.style.display='none';
+  if(emptyEl)emptyEl.style.display='none';
+  if(!isFirebaseReady){if(loadingEl)loadingEl.textContent='Firebase未接続';return;}
+  try{
+    const snap=await db.collection('ranking').orderBy('totalProfit','desc').limit(50).get();
+    if(loadingEl)loadingEl.style.display='none';
+    if(snap.empty){if(emptyEl)emptyEl.style.display='block';return;}
+    if(tableEl)tableEl.style.display='table';
+    const bodyEl=document.getElementById('rankBody');
+    if(!bodyEl)return;
+    const medals=['🥇','🥈','🥉'];
+    bodyEl.innerHTML=snap.docs.map((d,i)=>{
+      const u=d.data();const isMe=currentUser&&d.id===currentUser.uid;
+      const profit=u.totalProfit||0;
+      return `<tr class="${isMe?'my-rank':''}">
+        <td style="text-align:center">${medals[i]||i+1}</td>
+        <td><b>${escHtml(u.handle||u.displayName||'匿名')}</b>${isMe?'<span style="font-size:10px;color:var(--gold);margin-left:4px">あなた</span>':''}<div style="font-size:11px;color:var(--text3)">${escHtml((u.bio||'').slice(0,20))}</div></td>
+        <td style="text-align:right;font-weight:700;color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}¥${Math.abs(profit).toLocaleString()}</td>
+        <td style="text-align:right">${u.wr||0}%</td>
+        <td style="text-align:right">${u.count||0}</td>
+        <td>${!isMe&&currentUser?`<button class="btn-sm" style="font-size:10px" onclick="openDm('${d.id}','${escHtml(u.handle||u.displayName||'匿名')}');switchTab('dm',document.querySelector('.tab[onclick*=\'dm\']'))">DM</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
+  }catch(e){console.error('[PokerLog] loadRanking:',e);if(loadingEl)loadingEl.textContent='読み込みエラー';}
+}
+
+async function publishToRanking(){
+  if(!currentUser||!isFirebaseReady)return;
+  const jpySessions=sessions.filter(s=>s.cur==='JPY');
+  const totalProfit=jpySessions.reduce((a,s)=>a+(s.profit||0),0);
+  const wins=jpySessions.filter(s=>s.profit>0).length;
+  const wr=jpySessions.length?Math.round(wins/jpySessions.length*100):0;
+  try{
+    await db.collection('ranking').doc(currentUser.uid).set({uid:currentUser.uid,handle:profile.handle||currentUser.displayName||'',displayName:currentUser.displayName||'',bio:profile.bio||'',totalProfit,wr,count:jpySessions.length,updatedAt:_fsts()});
+    notify('ランキングに公開しました');await loadRanking();
+  }catch(e){notify('公開失敗: '+e.message,'err');}
+}
+
+// ================================================================
+// [PokerLog] Report
+// ================================================================
+function openReport(handle){
+  document.getElementById('reportTargetLabel').textContent=`通報対象: ${handle}`;
+  document.getElementById('reportModal').classList.add('open');
+  document.getElementById('reportModal').dataset.target=handle;
+}
+async function submitReport(){
+  if(!currentUser||!isFirebaseReady)return;
+  const target=document.getElementById('reportModal').dataset.target||'';
+  const reason=document.getElementById('reportReason')?.value||'';
+  const detail=document.getElementById('reportDetail')?.value?.trim()||'';
+  try{
+    await db.collection('reports').add({reporterUid:currentUser.uid,target,reason,detail,createdAt:_fsts()});
+    document.getElementById('reportModal').classList.remove('open');
+    document.getElementById('reportDetail').value='';
+    notify('通報を送信しました');
+  }catch{notify('送信失敗','err');}
+}
+
+// ================================================================
+// [PokerLog] Charts
+// ================================================================
+function renderCharts(){
+  if(!sessions.length){const el=document.getElementById('graphEmpty');if(el)el.style.display='block';return;}
+  const el=document.getElementById('graphEmpty');if(el)el.style.display='none';
+  renderUnifiedChart();renderBankrollChart();renderDistChart();renderGameChart();renderMonthlyChart();renderTournVsCashChart();renderAllCurChart();
+}
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+const chartOpts=(extra={})=>({responsive:false,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}}},... extra});
+
+function renderUnifiedChart(){
+  const ctx=document.getElementById('chartUnified');if(!ctx)return;destroyChart('unified');
+  const sorted=[...sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  let cum=0;
+  const data=sorted.map(s=>{cum+=(s.profitJPY??s.profit??0);return cum;});
+  charts['unified']=new Chart(ctx,{type:'line',data:{labels:sorted.map(s=>s.date),datasets:[{label:'累計収支(JPY)',data,borderColor:'#7cf7ff',backgroundColor:'rgba(124,247,255,0.07)',borderWidth:2,pointRadius:2,fill:true,tension:0.3}]},options:{...chartOpts(),scales:{x:{ticks:{color:'#8ea4dd',font:{size:9},maxRotation:45},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}},...chartOpts()}});
+}
+
+function renderBankrollChart(){
+  const ctx=document.getElementById('chartBankroll');if(!ctx)return;destroyChart('bankroll');
+  const sorted=[...sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  let cum=0;const data=sorted.map(s=>{cum+=(s.profit||0);return cum;});
+  charts['bankroll']=new Chart(ctx,{type:'line',data:{labels:sorted.map(s=>s.date),datasets:[{label:'バンクロール推移',data,borderColor:'#c9a84c',backgroundColor:'rgba(201,168,76,0.07)',borderWidth:2,pointRadius:2,fill:true,tension:0.3}]},options:chartOpts()});
+}
+
+function renderDistChart(){
+  const ctx=document.getElementById('chartDist');if(!ctx)return;destroyChart('dist');
+  const profits=sessions.map(s=>s.profit||0);
+  const bins=[-10000,-5000,-2000,-1000,-500,0,500,1000,2000,5000,10000];
+  const counts=new Array(bins.length).fill(0);
+  profits.forEach(p=>{let i=bins.findIndex(b=>p<b);if(i<0)i=bins.length-1;counts[Math.max(0,i-1)]++;});
+  const colors=bins.map(b=>b>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
+  charts['dist']=new Chart(ctx,{type:'bar',data:{labels:bins.map((b,i)=>i===0?`<${b}`:`${bins[i-1]}~${b}`),datasets:[{label:'損益分布',data:counts,backgroundColor:colors,borderWidth:0}]},options:chartOpts()});
+}
+
+function renderGameChart(){
+  const ctx=document.getElementById('chartGame');if(!ctx)return;destroyChart('game');
+  const gm={};sessions.forEach(s=>{const g=s.game||'Other';gm[g]=(gm[g]||[]);gm[g].push(s.profit>0?1:0);});
+  const labels=Object.keys(gm);
+  const data=labels.map(g=>{const arr=gm[g];return Math.round(arr.reduce((a,v)=>a+v,0)/arr.length*100);});
+  charts['game']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'勝率(%)',data,backgroundColor:'rgba(124,247,255,0.5)',borderWidth:0}]},options:chartOpts()});
+}
+
+function renderMonthlyChart(){
+  const ctx=document.getElementById('chartMonthly');if(!ctx)return;destroyChart('monthly');
+  const mm={};sessions.forEach(s=>{const m=s.date.slice(0,7);mm[m]=(mm[m]||0)+(s.profitJPY??s.profit??0);});
+  const labels=Object.keys(mm).sort();
+  const data=labels.map(m=>mm[m]);
+  const colors=data.map(v=>v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
+  charts['monthly']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'月別損益(JPY)',data,backgroundColor:colors,borderWidth:0}]},options:{...chartOpts(),scales:{x:{ticks:{color:'#8ea4dd',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8ea4dd',font:{size:9},callback:v=>'¥'+v.toLocaleString()},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+}
+
+function renderTournVsCashChart(){
+  const ctx=document.getElementById('chartTournVsCash');if(!ctx)return;destroyChart('tournVsCash');
+  const tourn=sessions.filter(s=>s.type==='tournament');const cash=sessions.filter(s=>s.type!=='tournament');
+  const tP=tourn.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  const cP=cash.reduce((a,s)=>a+(s.profitJPY??s.profit??0),0);
+  charts['tournVsCash']=new Chart(ctx,{type:'doughnut',data:{labels:['大会','キャッシュ'],datasets:[{data:[tP,cP],backgroundColor:['rgba(201,168,76,0.7)','rgba(124,247,255,0.5)'],borderWidth:0}]},options:{...chartOpts(),scales:{}}});
+}
+function renderAllCurChart(){
+  const ctx=document.getElementById('chartAllCur');if(!ctx)return;destroyChart('allCur');
+  const cur={};sessions.forEach(s=>{const c=s.currency||'JPY';cur[c]=(cur[c]||0)+(s.profit||0);});
+  const labels=Object.keys(cur);const data=labels.map(c=>cur[c]);
+  const colors=data.map(v=>v>=0?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)');
+  charts['allCur']=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'通貨別損益',data,backgroundColor:colors,borderWidth:0}]},options:chartOpts()});
+}
+
+// ================================================================
+// [PokerLog] renderAll
+// ================================================================
+function renderAll(){
+  renderStats();renderSessions();renderBalance();renderContract();renderCost();renderAccount();
+}
+
+// ================================================================
+// [PokerLog] Init
+// ================================================================
+window.addEventListener('load',()=>{
+  manualRates=lsGet('manualRates',{});Object.assign(rates,manualRates);
+  // modal overlay close
+  document.querySelectorAll('.modal-overlay').forEach(ov=>{
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');});
+  });
+});
+</script>
+<!-- admax -->
+<div id="admaxWrap" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;text-align:center;background:rgba(8,14,28,.95);border-top:1px solid rgba(201,168,76,.25);padding:2px 0;min-height:52px;display:flex;align-items:center;justify-content:center">
+<script src="https://adm.shinobi.jp/s/2794572b33fdef547a0c1e94941f352d"></script>
+</div>
+<!-- /admax -->
+</body>
+</html>
