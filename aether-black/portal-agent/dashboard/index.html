@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHER BLACK — Dashboard</title>
+<style>
+:root {
+  --bg:      #08080f;
+  --surface: #0f0f1a;
+  --border:  #1e1e30;
+  --gold:    #c9a227;
+  --gold-dim:#8a6e1a;
+  --text:    #dcdce8;
+  --dim:     #666680;
+  --err:     #ff5555;
+  --ok:      #44dd88;
+  --warn:    #ffcc44;
+  --mono:    'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--gold);
+}
+.logo em { color: var(--dim); font-style: normal; font-weight: 400; font-size: 12px; }
+
+#badge {
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  background: transparent;
+  transition: color .3s, border-color .3s;
+}
+#badge.running { color: var(--ok);   border-color: var(--ok); }
+#badge.done    { color: var(--ok);   border-color: var(--ok); }
+#badge.error   { color: var(--err);  border-color: var(--err); }
+
+#last-run { margin-left: auto; color: var(--dim); font-size: 11px; }
+
+/* ── Main layout ─────────────────────────────────────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.panel-title {
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────── */
+.field { margin-bottom: 9px; }
+.field:last-of-type { margin-bottom: 0; }
+
+.field label {
+  display: block;
+  font-size: 11px;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 9px;
+  border-radius: 4px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color .15s;
+}
+.field input:focus { border-color: var(--gold-dim); }
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 9px;
+  border: none;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s;
+  text-align: center;
+}
+.btn:hover   { opacity: .85; }
+.btn:disabled{ opacity: .35; cursor: not-allowed; }
+
+.btn-gold { background: var(--gold);   color: #08080f; margin-top: 2px; }
+.btn-save { background: var(--border); color: var(--text); margin-top: 10px; font-size: 12px; }
+.btn-stop { background: #2a0f0f; color: var(--err); border: 1px solid #4a1a1a; margin-top: 8px; display: none; }
+
+.save-ok { font-size: 11px; color: var(--ok); margin-top: 6px; min-height: 14px; }
+
+/* ── Log area ────────────────────────────────────────────────────────── */
+.log-wrap {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.log-header-title { font-size: 10px; color: var(--gold); letter-spacing: .1em; text-transform: uppercase; }
+
+.btn-clear {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  padding: 2px 9px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.btn-clear:hover { border-color: var(--dim); }
+
+#log {
+  flex: 1;
+  padding: 14px 18px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  background: #050508;
+}
+
+.l { display: block; white-space: pre-wrap; word-break: break-all; }
+.l-out { color: #bbbbd0; }
+.l-err { color: var(--err); }
+.l-sys { color: var(--warn); }
+.l-t   { color: #2e2e50; margin-right: 8px; user-select: none; }
+.l-empty { color: #2a2a40; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">AETHER BLACK <em>// Portal Dashboard</em></span>
+  <span id="badge">IDLE</span>
+  <span id="last-run"></span>
+</header>
+
+<div class="main">
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Config -->
+    <div class="panel">
+      <div class="panel-title">設定</div>
+      <div class="field"><label>Asset Name</label>
+        <input id="c-asset" type="text" placeholder="MyAssetPack"></div>
+      <div class="field"><label>Unity Email</label>
+        <input id="c-email" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Unity Password</label>
+        <input id="c-pass" type="password" placeholder="変更する場合のみ入力"></div>
+      <div class="field"><label>Support Email</label>
+        <input id="c-sup-email" type="email" placeholder="support@yoursite.com"></div>
+      <div class="field"><label>Support URL</label>
+        <input id="c-sup-url" type="text" placeholder="https://yoursite.com"></div>
+      <button class="btn btn-save" onclick="saveConfig()">設定を保存</button>
+      <div id="save-ok" class="save-ok"></div>
+    </div>
+
+    <!-- Run -->
+    <div class="panel">
+      <div class="panel-title">実行</div>
+      <button id="btn-run"  class="btn btn-gold" onclick="runAgent()">▶&ensp;Portal Agent を実行</button>
+      <button id="btn-stop" class="btn btn-stop" onclick="stopAgent()">■&ensp;強制停止</button>
+    </div>
+
+  </aside>
+
+  <!-- ── Log panel ────────────────────────────────────────────────────── -->
+  <div class="log-wrap">
+    <div class="log-header">
+      <span class="log-header-title">実行ログ</span>
+      <button class="btn-clear" onclick="clearLog()">クリア</button>
+    </div>
+    <div id="log">
+      <span class="l l-empty">▶ 「Portal Agent を実行」ボタンを押すとここにログが流れます。</span>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const LABELS = { idle:'IDLE', running:'実行中...', done:'完了 ✓', error:'エラー ✗' };
+let evtSrc = null;
+
+// ── 起動時処理 ───────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  await pollStatus();
+  setInterval(pollStatus, 3000);
+});
+
+// ── 設定読み込み ─────────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const cfg = await fetchJSON('/api/config');
+    set('c-asset',    cfg.ASSET_NAME    || '');
+    set('c-email',    cfg.UNITY_EMAIL   || '');
+    set('c-sup-email',cfg.SUPPORT_EMAIL || '');
+    set('c-sup-url',  cfg.SUPPORT_URL   || '');
+  } catch (e) { console.error('loadConfig:', e); }
+}
+
+// ── 設定保存 ─────────────────────────────────────────────────────────────
+async function saveConfig() {
+  const body = {
+    ASSET_NAME:    get('c-asset'),
+    UNITY_EMAIL:   get('c-email'),
+    SUPPORT_EMAIL: get('c-sup-email'),
+    SUPPORT_URL:   get('c-sup-url'),
+  };
+  const pass = get('c-pass');
+  if (pass) body.UNITY_PASSWORD = pass;
+
+  await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  set('c-pass', '');
+
+  const el = document.getElementById('save-ok');
+  el.textContent = '✓ 保存しました';
+  setTimeout(() => { el.textContent = ''; }, 2500);
+}
+
+// ── Agent 実行 ───────────────────────────────────────────────────────────
+async function runAgent() {
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-stop').style.display = '';
+  clearLog();
+
+  try {
+    const r = await fetch('/api/run', { method:'POST' });
+    if (!r.ok) { alert((await r.json()).error); resetRunUI(); return; }
+  } catch (e) { alert('サーバーへの接続に失敗しました'); resetRunUI(); return; }
+
+  connectSSE();
+}
+
+// ── Agent 停止 ───────────────────────────────────────────────────────────
+async function stopAgent() {
+  await fetch('/api/stop', { method:'POST' });
+}
+
+// ── ステータスポーリング ──────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const { status, lastRun } = await fetchJSON('/api/status');
+    const badge = document.getElementById('badge');
+    badge.textContent = LABELS[status] ?? status.toUpperCase();
+    badge.className = status;
+
+    if (lastRun) {
+      document.getElementById('last-run').textContent =
+        '最終実行: ' + new Date(lastRun).toLocaleString('ja-JP');
+    }
+    if (status !== 'running') resetRunUI();
+  } catch {}
+}
+
+// ── SSE 接続 ─────────────────────────────────────────────────────────────
+function connectSSE() {
+  if (evtSrc) evtSrc.close();
+  evtSrc = new EventSource('/api/logs/stream');
+
+  evtSrc.onmessage = e => {
+    const { type, text, time } = JSON.parse(e.data);
+    const logEl = document.getElementById('log');
+    logEl.querySelector('.l-empty')?.remove();
+
+    const span = document.createElement('span');
+    span.className = `l l-${type}`;
+    const hh = new Date(time).toLocaleTimeString('ja-JP');
+    span.innerHTML = `<span class="l-t">${hh}</span>${esc(text)}`;
+    logEl.appendChild(span);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  evtSrc.onerror = () => { evtSrc.close(); evtSrc = null; pollStatus(); };
+}
+
+// ── ログクリア ───────────────────────────────────────────────────────────
+function clearLog() {
+  document.getElementById('log').innerHTML =
+    '<span class="l l-empty">▶ 「Portal Agent を実行」ボタンを押すとここにログが流れます。</span>';
+}
+
+function resetRunUI() {
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-stop').style.display = 'none';
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────
+const get = id => document.getElementById(id).value;
+const set = (id, v) => { document.getElementById(id).value = v; };
+
+async function fetchJSON(url, opts) {
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

@@ -4,13 +4,16 @@
   "description": "AETHER BLACK — Unity Publisher Portal automation agent",
   "main": "submit.js",
   "scripts": {
+    "start": "node server.js",
     "submit": "node submit.js",
     "submit:headless": "cross-env HEADLESS=true node submit.js",
     "codegen": "npx playwright codegen https://publisher.unity.com",
     "install:browsers": "npx playwright install chromium"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "playwright": "^1.44.0"
   },
   "devDependencies": {
