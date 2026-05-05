@@ -69,11 +69,41 @@ app.post('/api/vault', (req, res) => {
   const updates = Object.fromEntries(
     Object.entries(req.body).filter(([k, v]) => VAULT_ALLOWED.includes(k) && v !== ''),
   );
+
+  // ① 暗号化 Vault に保存
   vault.set(updates);
-  // 保存と同時に process.env も更新
+
+  // ② process.env を即時更新（同一プロセス内の全モジュールに即反映）
   Object.assign(process.env, updates);
+
+  // ③ 物理 .env ファイルも同時更新（旧システム・submit.js との完全同期）
+  syncToEnvFile(vault.getAll());
+
   res.json({ ok: true, saved: Object.keys(updates) });
 });
+
+/** vault の全値を root .env ファイルへ書き出す */
+function syncToEnvFile(data) {
+  const ENV_PATH = path.join(__dirname, '..', '.env');
+  const SKIP = new Set(['GENERATION_LOCKED']);   // .env に書かなくて良い内部フラグ
+  try {
+    // 既存 .env を読んで vault 値で上書きマージ
+    const existing = {};
+    if (fs.existsSync(ENV_PATH)) {
+      fs.readFileSync(ENV_PATH, 'utf8').split('\n').forEach(line => {
+        const l = line.trim();
+        if (!l || l.startsWith('#')) return;
+        const idx = l.indexOf('=');
+        if (idx > 0) existing[l.slice(0, idx).trim()] = l.slice(idx + 1).trim();
+      });
+    }
+    const merged = { ...existing, ...Object.fromEntries(Object.entries(data).filter(([k]) => !SKIP.has(k))) };
+    const content = Object.entries(merged).map(([k, v]) => `${k}=${v}`).join('\n') + '\n';
+    fs.writeFileSync(ENV_PATH, content, { mode: 0o600 });
+  } catch (err) {
+    console.error('[server] .env 同期失敗 (無視して続行):', err.message);
+  }
+}
 
 // 認証情報の設定状況を返す（値は含めない）
 app.get('/api/vault/status', (req, res) => {
@@ -129,6 +159,10 @@ app.post('/api/run', (req, res) => {
     imageCount   = 10,
     imagesFolder, provider,
   } = req.body;
+
+  // ASSET_NAME を process.env と .env に同期（submit.js の REQUIRED チェック対策）
+  process.env.ASSET_NAME = assetName;
+  syncToEnvFile({ ...vault.getAll(), ASSET_NAME: assetName });
 
   runState = {
     status: 'running', logs: [],

@@ -1,16 +1,23 @@
 'use strict';
 /**
- * AETHER BLACK — Portal Agent
- * エントリーポイント。.env を読み込み、全フローを順番に実行する。
- *
- * 使い方:
- *   1. cp .env.example .env && [エディタで .env を編集]
- *   2. npm install && npm run install:browsers
- *   3. npm run submit          # ブラウザUIあり（デバッグ推奨）
- *      npm run submit:headless # ヘッドレス（自動実行用）
+ * AETHER BLACK — Portal Agent (submit.js)
+ * 認証情報は .env または core/vault.js から自動取得する。
+ * どちらも設定されていない場合のみエラーを出す。
  */
 
 require('dotenv').config();
+
+// ── Vault から credentials を process.env へ注入（.env の値を優先） ─────────
+try {
+  const vaultPath = require('path').join(__dirname, '..', 'core', 'vault.js');
+  if (require('fs').existsSync(vaultPath)) {
+    const vault = require(vaultPath);
+    const stored = vault.getAll();
+    for (const [k, v] of Object.entries(stored)) {
+      if (!process.env[k] && v) process.env[k] = v;
+    }
+  }
+} catch (_) { /* vault が使えない環境ではスキップ */ }
 
 const { chromium }    = require('playwright');
 const path            = require('path');
@@ -20,14 +27,18 @@ const { openDraft }   = require('./lib/navigation');
 const { fillMeta }    = require('./lib/metadata');
 const { submitPkg }   = require('./lib/submission');
 
-// ── 必須 env vars の検証 ────────────────────────────────────────────────────
-const REQUIRED = ['UNITY_EMAIL', 'UNITY_PASSWORD', 'ASSET_NAME', 'SUPPORT_EMAIL', 'SUPPORT_URL'];
-for (const key of REQUIRED) {
-  if (!process.env[key]) {
-    console.error(`[✗] .env に "${key}" が設定されていません。.env.example を参照してください。`);
-    process.exit(1);
-  }
+// ── 必須項目の検証（警告のみ・process.exit しない） ──────────────────────────
+const REQUIRED = ['UNITY_EMAIL', 'UNITY_PASSWORD', 'ASSET_NAME'];
+const missing  = REQUIRED.filter(k => !process.env[k]);
+if (missing.length > 0) {
+  console.error('[✗] 以下の設定が見つかりません: ' + missing.join(', '));
+  console.error('    ダッシュボードの「金庫に保存」から設定するか、.env ファイルに記載してください。');
+  process.exit(1);
 }
+
+// SUPPORT_EMAIL / SUPPORT_URL は任意（なければデフォルト値を使用）
+if (!process.env.SUPPORT_EMAIL) process.env.SUPPORT_EMAIL = process.env.UNITY_EMAIL;
+if (!process.env.SUPPORT_URL)   process.env.SUPPORT_URL   = 'https://unity.com/support';
 
 // Submission Message: .env に指定がなければ ASSET_NAME から自動生成
 const SUBMISSION_MESSAGE = process.env.SUBMISSION_MESSAGE ||
