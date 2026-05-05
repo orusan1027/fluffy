@@ -37,7 +37,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// 静的ファイル — __dirname は server.js の場所に固定されるため CWD に依存しない
+const PUBLIC_DIR = path.join(__dirname, 'public');
+app.use(express.static(PUBLIC_DIR));
+
+// "/" を明示的に index.html へルーティング（静的ミドルウェアの代替フォールバック）
+app.get('/', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
 // ── SSE / Pipeline 状態 ─────────────────────────────────────────────────────
 let runState = { status: 'idle', logs: [], lastRun: null, currentPhase: null };
@@ -228,5 +234,8 @@ app.listen(PORT, '127.0.0.1', () => {
   console.log('\n  ╔═══════════════════════════════════════════╗');
   console.log('  ║  AETHER BLACK v3.0 Dashboard              ║');
   console.log('  ╚═══════════════════════════════════════════╝');
-  console.log(`  → http://localhost:${PORT}\n`);
+  console.log(`  → http://localhost:${PORT}`);
+  console.log(`  → 静的ファイル: ${PUBLIC_DIR}`);
+  const indexExists = fs.existsSync(path.join(PUBLIC_DIR, 'index.html'));
+  console.log(`  → index.html: ${indexExists ? '✓ 存在' : '✗ 見つかりません'}\n`);
 });
