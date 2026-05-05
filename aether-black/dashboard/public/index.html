@@ -1664,15 +1664,15 @@ function fetchThemes() {
    VAULT
 ═══════════════════════════════════════ */
 var VAULT_FIELDS = [
-  ['vault-unity-email',   'unityEmail'],
-  ['vault-unity-pw',      'unityPassword'],
-  ['vault-stability-key', 'stabilityApiKey'],
-  ['vault-openai-key',    'openaiApiKey'],
-  ['vault-fab-email',     'fabEmail'],
-  ['vault-fab-pw',        'fabPassword'],
-  ['vault-support-email', 'supportEmail'],
-  ['vault-support-url',   'supportUrl'],
-  ['vault-budget-limit',  'budgetLimit'],
+  ['vault-unity-email',   'UNITY_EMAIL'],
+  ['vault-unity-pw',      'UNITY_PASSWORD'],
+  ['vault-stability-key', 'STABILITY_API_KEY'],
+  ['vault-openai-key',    'OPENAI_API_KEY'],
+  ['vault-fab-email',     'FAB_EMAIL'],
+  ['vault-fab-pw',        'FAB_PASSWORD'],
+  ['vault-support-email', 'SUPPORT_EMAIL'],
+  ['vault-support-url',   'SUPPORT_URL'],
+  ['vault-budget-limit',  'BUDGET_MONTHLY_LIMIT_USD'],
 ];
 
 var MASKED = '••••••••';
@@ -1686,8 +1686,9 @@ function fetchVault() {
       var val = data[pair[1]];
       if (val != null) el.value = val;
     });
-    if (data.headless != null) {
-      document.getElementById('vault-headless').checked = !!data.headless;
+    var headlessEl = document.getElementById('vault-headless');
+    if (headlessEl && data.HEADLESS != null) {
+      headlessEl.checked = (data.HEADLESS === 'true' || data.HEADLESS === true);
     }
     appendLog('Vault credentials loaded.', 'sys');
   }).catch(function (err) {
@@ -1703,7 +1704,8 @@ function saveVault() {
     var val = el.value.trim();
     if (val && val !== MASKED) payload[pair[1]] = val;
   });
-  payload.headless = document.getElementById('vault-headless').checked;
+  var headlessChecked = document.getElementById('vault-headless');
+  if (headlessChecked) payload.HEADLESS = headlessChecked.checked ? 'true' : 'false';
 
   apiFetch('/api/vault', { method: 'POST', body: JSON.stringify(payload) }).then(function () {
     showToast('金庫に保存しました。', 'success');
