@@ -22,6 +22,14 @@ try {
 const { chromium }    = require('playwright');
 const path            = require('path');
 const fs              = require('fs');
+
+function resolveChromeExe() {
+  const bundled = chromium.executablePath();
+  if (fs.existsSync(bundled)) return bundled;
+  const fallback = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+  if (fs.existsSync(fallback)) return fallback;
+  return bundled;
+}
 const { login }       = require('./lib/auth');
 const { openDraft }   = require('./lib/navigation');
 const { fillMeta }    = require('./lib/metadata');
@@ -70,12 +78,14 @@ async function main() {
   console.log('');
 
   const browser = await chromium.launch({
+    executablePath: resolveChromeExe(),
     headless,
-    slowMo: headless ? 0 : 80, // 動作を肉眼で確認できる速度
+    slowMo: headless ? 0 : 80,
   });
 
   const context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
+    ignoreHTTPSErrors: true,
   });
 
   const page = await context.newPage();

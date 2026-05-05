@@ -12,6 +12,14 @@ const vault = require('../../core/vault');
 
 const SCREENSHOT_DIR = path.join(__dirname, '..', '..', 'data', 'screenshots');
 
+function resolveChromeExe() {
+  const bundled = chromium.executablePath();
+  if (fs.existsSync(bundled)) return bundled;
+  const fallback = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+  if (fs.existsSync(fallback)) return fallback;
+  return bundled;
+}
+
 async function shot(page, name) {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
   const f = path.join(SCREENSHOT_DIR, `fab-${Date.now()}-${name}.png`);
@@ -31,8 +39,8 @@ async function submit({ assetName, metadata, zipPath, emit }) {
   log('[ Fab.com Publisher — Playwright ]', 'sys');
   log(`ヘッドレス: ${headless} | アセット: ${assetName}`);
 
-  const browser = await chromium.launch({ headless, slowMo: headless ? 0 : 50 });
-  const ctx     = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const browser = await chromium.launch({ executablePath: resolveChromeExe(), headless, slowMo: headless ? 0 : 50 });
+  const ctx     = await browser.newContext({ viewport: { width: 1280, height: 900 }, ignoreHTTPSErrors: true });
   const page    = await ctx.newPage();
 
   try {

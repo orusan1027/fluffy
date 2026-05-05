@@ -12,6 +12,16 @@ const vault = require('../../core/vault');
 
 const SCREENSHOT_DIR = path.join(__dirname, '..', '..', 'data', 'screenshots');
 
+// Resolve the Chromium binary: prefer the version bundled with this Playwright release,
+// fall back to a previously-downloaded version if the bundle isn't downloaded yet.
+function resolveChromeExe() {
+  const bundled = chromium.executablePath();
+  if (fs.existsSync(bundled)) return bundled;
+  const fallback = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+  if (fs.existsSync(fallback)) return fallback;
+  return bundled; // let Playwright decide (will error with a clear message)
+}
+
 const SEL = {
   emailInput:   '#conversations_create_session_form_email, input[name="email"], input[type="email"]',
   passInput:    '#conversations_create_session_form_password, input[name="password"], input[type="password"]',
@@ -47,8 +57,8 @@ async function submit({ assetName, metadata, emit }) {
   log('[ Unity Publisher — Playwright ]', 'sys');
   log(`ヘッドレス: ${headless} | アセット: ${assetName}`);
 
-  const browser = await chromium.launch({ headless, slowMo: headless ? 0 : 50 });
-  const ctx     = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const browser = await chromium.launch({ executablePath: resolveChromeExe(), headless, slowMo: headless ? 0 : 50 });
+  const ctx     = await browser.newContext({ viewport: { width: 1280, height: 900 }, ignoreHTTPSErrors: true });
   const page    = await ctx.newPage();
 
   try {
