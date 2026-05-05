@@ -1,13 +1,20 @@
 # 認証情報 — 絶対にコミットしない
 .env
+data/vault/
 
-# 自動生成ファイル
-node_modules/
+# 生成データ（大容量ファイル）
+data/generated/
+data/packages/
+data/screenshots/
+data/logs/
+
+# DB / 状態ファイル
 data/assets.json
+data/budget.json
+
+# Node モジュール
+node_modules/
 portal-agent/node_modules/
-portal-agent/screenshots/
-portal-agent/.env
 
 # Mac アプリ（ローカル生成物）
-launcher/AetherBlack.app/
-portal-agent/AetherBlack.app/
+*.app/

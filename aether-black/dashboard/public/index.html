@@ -2,534 +2,613 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AETHER BLACK v2.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHER BLACK v3.0 — Control Center</title>
 <style>
 :root {
-  --bg:      #07070e;
-  --sur:     #0d0d1a;
-  --bdr:     #1a1a2e;
+  --bg:      #08080f;
+  --surface: #0f0f1a;
+  --border:  #1e1e2e;
   --gold:    #c9a227;
-  --gold2:   #8a6a15;
-  --text:    #d8d8e8;
-  --dim:     #5a5a7a;
-  --ok:      #3dcc7e;
-  --err:     #e05555;
-  --warn:    #e0a030;
-  --fab:     #0099ff;
-  --mono:    'JetBrains Mono','Fira Code','Consolas',monospace;
+  --gold2:   #e8c553;
+  --blue:    #4a9eff;
+  --red:     #e74c3c;
+  --green:   #27ae60;
+  --yellow:  #f39c12;
+  --text:    #d0d0e0;
+  --dim:     #6a6a8a;
+  --sidebar: 360px;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Segoe UI',sans-serif;height:100vh;display:grid;grid-template-rows:50px 1fr;overflow:hidden;font-size:13px}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'SF Mono','Fira Code','Consolas',monospace; font-size: 13px; min-height: 100vh; }
 
-/* ── Header ─────────────────────────────────────────────────────────── */
-header{display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--sur);border-bottom:1px solid var(--bdr);flex-shrink:0}
-.logo{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--gold)}
-.logo em{color:var(--dim);font-style:normal;font-weight:400;font-size:11px}
-#badge{padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.06em;border:1px solid var(--bdr);color:var(--dim);transition:all .3s}
-#badge.running{color:var(--ok);border-color:var(--ok)}
-#badge.done{color:var(--ok);border-color:var(--ok)}
-#badge.error{color:var(--err);border-color:var(--err)}
-#last-run{margin-left:auto;color:var(--dim);font-size:11px}
+/* ─ Layout ─────────────────────────────────────────────────── */
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: var(--sidebar); min-width: var(--sidebar); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+.main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 16px; overflow-y: auto; }
 
-/* ── Layout ──────────────────────────────────────────────────────────── */
-.main{display:grid;grid-template-columns:300px 1fr;overflow:hidden}
-.sidebar{border-right:1px solid var(--bdr);padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;background:var(--sur)}
-.right{display:flex;flex-direction:column;overflow:hidden}
+/* ─ Header ─────────────────────────────────────────────────── */
+.sidebar-header { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); }
+.logo { color: var(--gold); font-size: 15px; font-weight: bold; letter-spacing: 2px; }
+.logo-sub { color: var(--dim); font-size: 10px; margin-top: 2px; }
 
-/* ── Panel ───────────────────────────────────────────────────────────── */
-.panel{border:1px solid var(--bdr);border-radius:6px;padding:12px}
-.panel-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.panel-title .badge-fab{font-size:9px;background:#0033aa22;color:var(--fab);border:1px solid #004499;padding:1px 5px;border-radius:3px;letter-spacing:0}
+/* ─ Sections ─────────────────────────────────────────────────── */
+.section { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.section-title { color: var(--gold); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+.section-title.blue { color: var(--blue); }
+.section-title.red  { color: var(--red); }
 
-/* ── Asset list ──────────────────────────────────────────────────────── */
-.asset-list{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;max-height:120px;overflow-y:auto}
-.asset-item{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all .15s}
-.asset-item:hover{background:#111122;border-color:var(--bdr)}
-.asset-item.active{background:#0d1530;border-color:var(--gold2)}
-.asset-item .aname{flex:1;font-size:12px}
-.asset-item .aplat{font-size:10px;color:var(--dim)}
-.asset-item .adel{background:none;border:none;color:var(--dim);cursor:pointer;padding:0 2px;font-size:12px;line-height:1}
-.asset-item .adel:hover{color:var(--err)}
-.btn-new{width:100%;padding:5px;background:var(--bdr);border:1px dashed #333355;border-radius:4px;color:var(--dim);font-size:11px;cursor:pointer;transition:all .15s}
-.btn-new:hover{border-color:var(--gold2);color:var(--gold)}
+/* ─ Form elements ─────────────────────────────────────────── */
+label { display: block; color: var(--dim); font-size: 11px; margin-bottom: 3px; margin-top: 8px; }
+label:first-child { margin-top: 0; }
+input[type=text], input[type=email], input[type=password], input[type=number], select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 7px 9px; border-radius: 4px; font-family: inherit; font-size: 12px; outline: none;
+}
+input:focus, select:focus { border-color: var(--gold); }
+select option { background: var(--bg); }
 
-/* ── Form fields ─────────────────────────────────────────────────────── */
-.field{margin-bottom:8px}
-.field:last-child{margin-bottom:0}
-.field label{display:block;font-size:11px;color:var(--dim);margin-bottom:3px}
-.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--bdr);color:var(--text);padding:5px 8px;border-radius:4px;font-size:12px;outline:none;transition:border-color .15s}
-.field input:focus,.field select:focus{border-color:var(--gold2)}
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 32px; }
+.pw-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--dim); font-size: 14px; background: none; border: none; }
 
-/* ── Platform checkboxes ─────────────────────────────────────────────── */
-.plat-row{display:flex;gap:10px;margin-bottom:2px}
-.plat-opt{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 8px;border:1px solid var(--bdr);border-radius:4px;transition:all .15s;flex:1;justify-content:center}
-.plat-opt:hover{border-color:var(--dim)}
-.plat-opt.unity.checked{border-color:var(--gold);color:var(--gold);background:#1a150a}
-.plat-opt.fab.checked{border-color:var(--fab);color:var(--fab);background:#000e1a}
-.plat-opt input[type=checkbox]{display:none}
-.plat-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.radio-group, .check-group { display: flex; flex-direction: column; gap: 6px; }
+.radio-group label, .check-group label { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 12px; cursor: pointer; margin: 0; }
+.radio-group input, .check-group input { width: auto; accent-color: var(--gold); }
 
-/* ── Start phase radio ───────────────────────────────────────────────── */
-.phase-opts{display:flex;flex-direction:column;gap:4px}
-.phase-opt{display:flex;align-items:center;gap:7px;padding:5px 8px;border:1px solid var(--bdr);border-radius:4px;cursor:pointer;transition:all .15s;font-size:12px}
-.phase-opt:hover{border-color:var(--dim)}
-.phase-opt.selected{border-color:var(--gold2);background:#110e05}
-.phase-opt input{display:none}
-.phase-num{width:18px;height:18px;border-radius:3px;background:var(--bdr);color:var(--dim);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
-.phase-opt.selected .phase-num{background:var(--gold2);color:#000}
-.phase-label{flex:1}
-.phase-sub{color:var(--dim);font-size:10px}
+/* ─ Buttons ─────────────────────────────────────────────────── */
+.btn { display: block; width: 100%; padding: 9px; border: none; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: bold; letter-spacing: 0.5px; transition: opacity .15s, transform .1s; }
+.btn:hover { opacity: .85; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-gold { background: var(--gold); color: #000; }
+.btn-red  { background: var(--red);  color: #fff; }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-dim  { background: var(--border); color: var(--text); }
+.btn-sm   { font-size: 11px; padding: 6px 10px; width: auto; display: inline-block; }
+.btn-row  { display: flex; gap: 8px; margin-top: 10px; }
 
-/* ── Auth section (collapsible) ──────────────────────────────────────── */
-.auth-toggle{width:100%;background:none;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-align:left;padding:0;display:flex;align-items:center;gap:4px}
-.auth-toggle:hover{color:var(--text)}
-.auth-body{display:none;margin-top:10px}
-.auth-body.open{display:block}
-.save-ok{font-size:11px;color:var(--ok);min-height:14px;margin-top:5px}
+/* ─ Run Controls ─────────────────────────────────────────────── */
+.run-controls { padding: 18px; margin-top: auto; border-top: 1px solid var(--border); }
+.run-btn { font-size: 15px; padding: 13px; margin-bottom: 8px; letter-spacing: 1px; }
+.status-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 10px; border-radius: 20px; }
+.status-idle    { background: #1a1a2e; color: var(--dim); }
+.status-running { background: #1a1000; color: var(--gold); animation: pulse 1.5s infinite; }
+.status-done    { background: #001a0a; color: var(--green); }
+.status-error   { background: #1a0000; color: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 
-/* ── Buttons ─────────────────────────────────────────────────────────── */
-.btn{display:block;width:100%;padding:9px;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;text-align:center}
-.btn:hover{opacity:.85}
-.btn:disabled{opacity:.35;cursor:not-allowed}
-.btn-gold{background:var(--gold);color:#07070e;margin-top:2px}
-.btn-save{background:var(--bdr);color:var(--text);font-size:11px;font-weight:400;margin-top:8px}
-.btn-stop{background:#200a0a;color:var(--err);border:1px solid #3a1010;margin-top:7px;display:none}
+/* ─ Budget ───────────────────────────────────────────────────── */
+.budget-box { background: var(--bg); border: 1px solid var(--gold); border-radius: 6px; padding: 12px; }
+.budget-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
+.budget-val { color: var(--gold); font-size: 16px; font-weight: bold; }
+.budget-bar-wrap { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.budget-bar { height: 100%; border-radius: 4px; transition: width .5s; }
+.budget-ok   { background: var(--green); }
+.budget-warn { background: var(--yellow); }
+.budget-over { background: var(--red); }
+.budget-meta { color: var(--dim); font-size: 10px; margin-top: 5px; }
 
-/* ── Pipeline progress ───────────────────────────────────────────────── */
-.pipeline-bar{display:flex;align-items:center;padding:10px 18px;border-bottom:1px solid var(--bdr);background:var(--sur);gap:0}
-.ph{display:flex;align-items:center;gap:7px;flex:1;padding:5px 10px;border-radius:5px;font-size:11px;transition:all .3s}
-.ph .ph-dot{width:8px;height:8px;border-radius:50%;background:var(--bdr);flex-shrink:0;transition:all .3s}
-.ph .ph-name{color:var(--dim)}
-.ph.active .ph-dot{background:var(--ok);box-shadow:0 0 6px var(--ok)}
-.ph.active .ph-name{color:var(--ok)}
-.ph.done .ph-dot{background:var(--gold)}
-.ph.done .ph-name{color:var(--gold)}
-.ph.error .ph-dot{background:var(--err)}
-.ph.error .ph-name{color:var(--err)}
-.ph-arrow{color:var(--bdr);font-size:14px;padding:0 2px}
+/* ─ Collapsible ──────────────────────────────────────────────── */
+.collapsible-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.collapsible-header .arrow { transition: transform .2s; }
+.collapsible-header.open .arrow { transform: rotate(180deg); }
+.collapsible-body { overflow: hidden; max-height: 0; transition: max-height .3s ease; }
+.collapsible-body.open { max-height: 2000px; }
 
-/* ── Log panel ───────────────────────────────────────────────────────── */
-.log-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--bdr);background:var(--sur)}
-.log-title{font-size:10px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase}
-.btn-clear{background:none;border:1px solid var(--bdr);color:var(--dim);padding:2px 8px;border-radius:3px;cursor:pointer;font-size:10px}
-.btn-clear:hover{border-color:var(--dim)}
-#log{flex:1;padding:12px 16px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.8;background:#04040a}
-.l{display:block;white-space:pre-wrap;word-break:break-all}
-.l-out{color:#b0b0cc}
-.l-err{color:var(--err)}
-.l-sys{color:var(--warn)}
-.l-warn{color:var(--warn);opacity:.8}
-.l-t{color:#222240;margin-right:8px;user-select:none}
-.l-empty{color:#222240;font-style:italic}
+/* ─ Main area ─────────────────────────────────────────────────── */
+.page-title { color: var(--gold); font-size: 18px; letter-spacing: 3px; font-weight: bold; }
+.page-subtitle { color: var(--dim); font-size: 11px; margin-top: 2px; }
+
+/* ─ Phase Bar ─────────────────────────────────────────────────── */
+.phase-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+.phase-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.phase-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 2px solid var(--border); color: var(--dim); transition: all .4s; }
+.phase-circle.active { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px var(--gold); animation: pulsephase 1.2s infinite; }
+.phase-circle.done   { border-color: var(--green); background: var(--green); color: #fff; }
+.phase-circle.error  { border-color: var(--red);   background: var(--red);   color: #fff; }
+.phase-label { font-size: 10px; color: var(--dim); letter-spacing: 0.5px; }
+.phase-label.active { color: var(--gold); }
+.phase-label.done   { color: var(--green); }
+.phase-connector { flex: 1; height: 2px; background: var(--border); margin: 0 8px; margin-top: -20px; }
+@keyframes pulsephase { 0%,100%{box-shadow:0 0 12px var(--gold)} 50%{box-shadow:0 0 24px var(--gold)} }
+
+/* ─ Budget bar in main ───────────────────────────────────────── */
+.main-budget { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+.main-budget-title { font-size: 10px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+
+/* ─ Log Panel ─────────────────────────────────────────────────── */
+.log-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; flex: 1; display: flex; flex-direction: column; min-height: 300px; }
+.log-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.log-title { font-size: 11px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; }
+.log-actions { display: flex; gap: 6px; }
+.log-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-size: 11.5px; line-height: 1.65; max-height: 450px; }
+.log-entry { display: flex; gap: 8px; }
+.log-time { color: var(--dim); flex-shrink: 0; }
+.log-sys   { color: var(--gold); }
+.log-out   { color: var(--text); }
+.log-warn  { color: var(--yellow); }
+.log-error { color: var(--red); }
+.log-info  { color: var(--green); }
+
+/* ─ Screenshots ──────────────────────────────────────────────── */
+.shots-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.shots-header { padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid transparent; }
+.shots-header.open { border-bottom-color: var(--border); }
+.shots-grid { display: grid; grid-template-columns: repeat(auto-fill, 120px); gap: 8px; padding: 12px 14px; }
+.shot-img { width: 120px; height: 75px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; transition: opacity .2s; }
+.shot-img:hover { opacity: .8; border-color: var(--gold); }
+
+/* ─ Toast ─────────────────────────────────────────────────────── */
+.toast { position: fixed; top: 20px; right: 20px; background: var(--surface); border: 1px solid var(--gold); color: var(--gold); padding: 10px 18px; border-radius: 6px; font-size: 12px; z-index: 1000; animation: toastIn .3s; }
+.toast.error { border-color: var(--red); color: var(--red); }
+@keyframes toastIn { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:none} }
 </style>
 </head>
 <body>
+<div class="layout">
 
-<header>
-  <span class="logo">AETHER BLACK <em>v2.0 // Multi-Platform Dashboard</em></span>
-  <span id="badge">IDLE</span>
-  <span id="last-run"></span>
-</header>
-
-<div class="main">
-
-  <!-- ════ SIDEBAR ══════════════════════════════════════════════════════ -->
-  <aside class="sidebar">
-
-    <!-- アセット管理 -->
-    <div class="panel">
-      <div class="panel-title">📦 アセット管理</div>
-      <div class="asset-list" id="asset-list"></div>
-      <button class="btn-new" onclick="newAsset()">＋ 新規アセットを追加</button>
-    </div>
-
-    <!-- パイプライン設定 -->
-    <div class="panel">
-      <div class="panel-title">⚙ パイプライン設定</div>
-
-      <div class="field">
-        <label>アセット名</label>
-        <input id="cfg-asset" type="text" placeholder="MyAssetPack">
-      </div>
-
-      <!-- プラットフォーム -->
-      <div class="field">
-        <label>出品プラットフォーム</label>
-        <div class="plat-row">
-          <label class="plat-opt unity checked" id="plat-unity">
-            <input type="checkbox" checked onchange="togglePlat('unity',this)">
-            <span class="plat-dot"></span> Unity
-          </label>
-          <label class="plat-opt fab" id="plat-fab">
-            <input type="checkbox" onchange="togglePlat('fab',this)">
-            <span class="plat-dot"></span>
-            Fab.com <span style="font-size:9px;opacity:.6">準備中</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- 開始フェーズ -->
-      <div class="field">
-        <label>開始フェーズ</label>
-        <div class="phase-opts">
-          <label class="phase-opt" id="p-gen" onclick="setPhase('generation')">
-            <input type="radio" name="phase" value="generation">
-            <span class="phase-num">1</span>
-            <span class="phase-label">
-              Generation（画像生成）
-              <span class="phase-sub">— AI APIで画像を自動生成（準備中）</span>
-            </span>
-          </label>
-          <label class="phase-opt" id="p-pack" onclick="setPhase('packaging')">
-            <input type="radio" name="phase" value="packaging">
-            <span class="phase-num">2</span>
-            <span class="phase-label">
-              Packaging（既存画像から）
-              <span class="phase-sub">— Unityシーン作成＋パッケージ化</span>
-            </span>
-          </label>
-          <label class="phase-opt selected" id="p-pub" onclick="setPhase('publishing')">
-            <input type="radio" name="phase" value="publishing" checked>
-            <span class="phase-num">3</span>
-            <span class="phase-label">
-              Publishing（提出のみ）
-              <span class="phase-sub">— 既にパッケージ済みの場合</span>
-            </span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- 認証設定（折りたたみ） -->
-    <div class="panel">
-      <button class="auth-toggle" onclick="toggleAuth()">
-        <span id="auth-arrow">▶</span> 認証設定
-      </button>
-      <div class="auth-body" id="auth-body">
-        <div style="height:10px"></div>
-        <div style="font-size:10px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Unity</div>
-        <div class="field"><label>Email</label>
-          <input id="c-email" type="email" placeholder="your@example.com"></div>
-        <div class="field"><label>Password</label>
-          <input id="c-pass" type="password" placeholder="変更する場合のみ入力"></div>
-        <div style="font-size:10px;color:var(--fab);letter-spacing:.08em;text-transform:uppercase;margin:10px 0 8px">
-          Fab.com <span style="color:var(--dim);font-size:9px">（近日対応）</span></div>
-        <div class="field"><label>Email</label>
-          <input id="c-fab-email" type="email" placeholder="your@example.com"></div>
-        <div class="field"><label>Password</label>
-          <input id="c-fab-pass" type="password" placeholder="変更する場合のみ入力"></div>
-        <div style="font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin:10px 0 8px">サポート情報</div>
-        <div class="field"><label>Support Email</label>
-          <input id="c-sup-email" type="email" placeholder="support@yoursite.com"></div>
-        <div class="field"><label>Support URL</label>
-          <input id="c-sup-url" type="text" placeholder="https://yoursite.com"></div>
-        <button class="btn btn-save" onclick="saveConfig()">設定を保存</button>
-        <div id="save-ok" class="save-ok"></div>
-      </div>
-    </div>
-
-    <!-- 実行 -->
-    <div class="panel">
-      <div class="panel-title">▶ 実行</div>
-      <button id="btn-run" class="btn btn-gold" onclick="runPipeline()">▶&ensp;パイプラインを実行</button>
-      <button id="btn-stop" class="btn btn-stop" onclick="stopPipeline()">■&ensp;強制停止</button>
-    </div>
-
-  </aside>
-
-  <!-- ════ RIGHT ══════════════════════════════════════════════════════ -->
-  <div class="right">
-
-    <!-- Pipeline progress bar -->
-    <div class="pipeline-bar">
-      <div class="ph" id="ph-gen">
-        <span class="ph-dot"></span>
-        <span class="ph-name">Phase 1: Generation</span>
-      </div>
-      <span class="ph-arrow">›</span>
-      <div class="ph" id="ph-pack">
-        <span class="ph-dot"></span>
-        <span class="ph-name">Phase 2: Packaging</span>
-      </div>
-      <span class="ph-arrow">›</span>
-      <div class="ph" id="ph-pub">
-        <span class="ph-dot"></span>
-        <span class="ph-name">Phase 3: Publishing</span>
-      </div>
-    </div>
-
-    <!-- Log -->
-    <div class="log-header">
-      <span class="log-title">実行ログ</span>
-      <button class="btn-clear" onclick="clearLog()">クリア</button>
-    </div>
-    <div id="log">
-      <span class="l l-empty">▶ パイプラインを実行するとここにログが表示されます。</span>
-    </div>
-
+<!-- ══════════════════════ SIDEBAR ══════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">⬛ AETHER BLACK</div>
+    <div class="logo-sub">v3.0 — 完全自動化アセット工場</div>
   </div>
+
+  <!-- Asset Config -->
+  <div class="section">
+    <div class="section-title">アセット設定</div>
+    <label>アセット名</label>
+    <input type="text" id="assetName" value="MyAssetPack_Vol1" placeholder="例: Cyberpunk Backgrounds Pack">
+    <label>テーマ</label>
+    <select id="theme">
+      <option value="cyberpunk">Cyberpunk City</option>
+      <option value="ancient_japan">Ancient Japan</option>
+      <option value="deep_space">Deep Space</option>
+      <option value="dark_fantasy">Dark Fantasy</option>
+      <option value="underwater">Underwater World</option>
+      <option value="steampunk">Steampunk</option>
+    </select>
+    <label>生成枚数（Phase 1 のみ）</label>
+    <input type="number" id="imageCount" value="50" min="1" max="200">
+  </div>
+
+  <!-- Platform & Phase -->
+  <div class="section">
+    <div class="section-title">プラットフォーム</div>
+    <div class="check-group">
+      <label><input type="checkbox" id="plt-unity" checked> <span style="color:var(--gold)">■</span> Unity Asset Store</label>
+      <label><input type="checkbox" id="plt-fab"> <span style="color:var(--blue)">■</span> Fab.com (Epic Games)</label>
+    </div>
+    <div class="section-title" style="margin-top:12px">開始フェーズ</div>
+    <div class="radio-group" id="phaseRadios">
+      <label><input type="radio" name="phase" value="generation"> Phase 1: AI生成 + QA</label>
+      <label><input type="radio" name="phase" value="packaging"> Phase 2: パッケージング</label>
+      <label><input type="radio" name="phase" value="publishing" checked> Phase 3: 申請のみ</label>
+    </div>
+    <div id="providerSection" style="margin-top:10px;display:none">
+      <div class="section-title blue">AI プロバイダー</div>
+      <div class="radio-group">
+        <label><input type="radio" name="provider" value="stability" checked> Stability AI (SD3 Ultra, 8K)</label>
+        <label><input type="radio" name="provider" value="openai"> OpenAI DALL-E 3 (HD)</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Monitor -->
+  <div class="section">
+    <div class="section-title" style="color:var(--gold)">予算監視</div>
+    <div class="budget-box">
+      <div class="budget-row">
+        <span>今月の支出</span>
+        <span class="budget-val" id="budgetSpend">$0.00</span>
+      </div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar budget-ok" id="budgetBar" style="width:0%"></div>
+      </div>
+      <div class="budget-meta" id="budgetMeta">残高: $50.00 / 上限 $50.00</div>
+    </div>
+    <button class="btn btn-dim btn-sm" style="margin-top:8px" onclick="resetBudget()">月次リセット</button>
+  </div>
+
+  <!-- Vault (Credentials) -->
+  <div class="section">
+    <div class="collapsible-header" onclick="toggleVault(this)">
+      <div class="section-title" style="margin:0;color:var(--red)">🔒 認証金庫 (Vault)</div>
+      <span class="arrow" style="color:var(--dim)">▼</span>
+    </div>
+    <div class="collapsible-body" id="vaultBody">
+      <div style="padding-top:10px">
+        <label>Unity Email</label>
+        <input type="email" id="v-unity-email" placeholder="unity@example.com">
+        <label>Unity Password</label>
+        <div class="pw-wrap"><input type="password" id="v-unity-pass"><button class="pw-eye" onclick="togglePw('v-unity-pass')">👁</button></div>
+        <label>Stability API Key</label>
+        <div class="pw-wrap"><input type="password" id="v-stability-key" placeholder="sk-..."><button class="pw-eye" onclick="togglePw('v-stability-key')">👁</button></div>
+        <label>OpenAI API Key</label>
+        <div class="pw-wrap"><input type="password" id="v-openai-key" placeholder="sk-..."><button class="pw-eye" onclick="togglePw('v-openai-key')">👁</button></div>
+        <label>Fab Email</label>
+        <input type="email" id="v-fab-email" placeholder="fab@example.com">
+        <label>Fab Password</label>
+        <div class="pw-wrap"><input type="password" id="v-fab-pass"><button class="pw-eye" onclick="togglePw('v-fab-pass')">👁</button></div>
+        <label>Support Email</label>
+        <input type="email" id="v-support-email">
+        <label>Support URL</label>
+        <input type="text" id="v-support-url" placeholder="https://...">
+        <label>月間予算上限 (USD)</label>
+        <input type="number" id="v-budget-limit" value="50" min="1">
+        <label>Headless モード</label>
+        <select id="v-headless">
+          <option value="false">false — ブラウザ表示（初期テスト）</option>
+          <option value="true">true — ヘッドレス（自動実行）</option>
+        </select>
+        <button class="btn btn-red" style="margin-top:12px" onclick="saveVault()">🔒 金庫に保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run Controls -->
+  <div class="run-controls">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:11px;color:var(--dim)">ステータス</span>
+      <span class="status-badge status-idle" id="statusBadge">● IDLE</span>
+    </div>
+    <button class="btn btn-gold run-btn" onclick="runPipeline()">▶ パイプライン実行</button>
+    <button class="btn btn-red" style="padding:8px" onclick="stopPipeline()">■ 停止</button>
+  </div>
+</aside>
+
+<!-- ══════════════════════ MAIN ══════════════════════ -->
+<main class="main">
+  <div>
+    <div class="page-title">CONTROL CENTER</div>
+    <div class="page-subtitle">AETHER BLACK v3.0 — 年商30億円への自動化基盤</div>
+  </div>
+
+  <!-- Phase Bar -->
+  <div class="phase-bar">
+    <div class="phase-item">
+      <div class="phase-circle" id="ph-generation">🎨</div>
+      <div class="phase-label" id="ph-generation-label">AI生成</div>
+    </div>
+    <div class="phase-connector"></div>
+    <div class="phase-item">
+      <div class="phase-circle" id="ph-qa">🔍</div>
+      <div class="phase-label" id="ph-qa-label">QAフィルター</div>
+    </div>
+    <div class="phase-connector"></div>
+    <div class="phase-item">
+      <div class="phase-circle" id="ph-packaging">📦</div>
+      <div class="phase-label" id="ph-packaging-label">パッケージング</div>
+    </div>
+    <div class="phase-connector"></div>
+    <div class="phase-item">
+      <div class="phase-circle" id="ph-publishing">🚀</div>
+      <div class="phase-label" id="ph-publishing-label">申請</div>
+    </div>
+  </div>
+
+  <!-- Budget Bar (main) -->
+  <div class="main-budget">
+    <div class="main-budget-title">
+      <span>月間予算状況</span>
+      <span id="mainBudgetText" style="color:var(--gold)">読み込み中...</span>
+    </div>
+    <div class="budget-bar-wrap" style="height:10px">
+      <div class="budget-bar budget-ok" id="mainBudgetBar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Log Panel -->
+  <div class="log-panel">
+    <div class="log-header">
+      <span class="log-title">⚡ ライブログ</span>
+      <div class="log-actions">
+        <button class="btn btn-dim btn-sm" onclick="clearLogs()">クリア</button>
+        <button class="btn btn-dim btn-sm" onclick="copyLogs()">コピー</button>
+      </div>
+    </div>
+    <div class="log-body" id="logBody">
+      <div class="log-entry"><span class="log-sys">AETHER BLACK v3.0 起動完了。パイプラインを実行してください。</span></div>
+    </div>
+  </div>
+
+  <!-- Screenshots -->
+  <div class="shots-panel">
+    <div class="shots-header" onclick="toggleShots(this)">
+      <span style="font-size:11px;color:var(--dim);letter-spacing:1px;text-transform:uppercase">📸 Playwright スクリーンショット</span>
+      <span class="arrow" style="color:var(--dim)">▼</span>
+    </div>
+    <div class="collapsible-body" id="shotsBody">
+      <div class="shots-grid" id="shotsGrid">
+        <span style="color:var(--dim);font-size:11px;padding:8px">スクリーンショットはまだありません</span>
+      </div>
+    </div>
+  </div>
+</main>
 </div>
 
 <script>
-'use strict';
+// ─ State ──────────────────────────────────────────────────────────────
+let sseSource = null;
+let sseRetryDelay = 1000;
+let currentStatus = 'idle';
+let currentPhase  = null;
+const PHASES = ['generation', 'qa', 'packaging', 'publishing'];
 
-// ── State ────────────────────────────────────────────────────────────────
-let selectedPhase     = 'publishing';
-let selectedPlatforms = ['unity'];
-let assets            = [];
-let activeAssetId     = null;
-let evtSrc            = null;
-
-const LABELS = { idle:'IDLE', running:'実行中...', done:'完了 ✓', error:'エラー ✗' };
-
-// ── Boot ─────────────────────────────────────────────────────────────────
+// ─ Init ───────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadConfig();
-  await loadAssets();
-  await pollStatus();
-  setInterval(pollStatus, 3000);
+  await Promise.all([loadThemes(), loadVault(), loadBudget(), loadStatus()]);
+  connectSSE();
+  setInterval(loadStatus, 5000);
+  setInterval(loadBudget, 10000);
+  setInterval(loadScreenshots, 30000);
+  loadScreenshots();
+
+  // Phase radio → show/hide provider
+  document.querySelectorAll('input[name="phase"]').forEach(r => {
+    r.addEventListener('change', () => {
+      document.getElementById('providerSection').style.display =
+        r.value === 'generation' ? 'block' : 'none';
+    });
+  });
 });
 
-// ── Config ────────────────────────────────────────────────────────────────
-async function loadConfig() {
+// ─ Themes ─────────────────────────────────────────────────────────────
+async function loadThemes() {
   try {
-    const cfg = await api('/api/config');
-    if (cfg.ASSET_NAME)    { $('cfg-asset').value    = cfg.ASSET_NAME; }
-    if (cfg.UNITY_EMAIL)   { $('c-email').value      = cfg.UNITY_EMAIL; }
-    if (cfg.FAB_EMAIL)     { $('c-fab-email').value  = cfg.FAB_EMAIL; }
-    if (cfg.SUPPORT_EMAIL) { $('c-sup-email').value  = cfg.SUPPORT_EMAIL; }
-    if (cfg.SUPPORT_URL)   { $('c-sup-url').value    = cfg.SUPPORT_URL; }
+    const themes = await api('/api/themes');
+    const sel = document.getElementById('theme');
+    sel.innerHTML = '';
+    themes.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.key; o.textContent = t.name; sel.appendChild(o);
+    });
   } catch {}
 }
 
-async function saveConfig() {
-  const body = {
-    ASSET_NAME:    $('cfg-asset').value,
-    UNITY_EMAIL:   $('c-email').value,
-    SUPPORT_EMAIL: $('c-sup-email').value,
-    SUPPORT_URL:   $('c-sup-url').value,
+// ─ Vault ──────────────────────────────────────────────────────────────
+async function loadVault() {
+  try {
+    const v = await api('/api/vault');
+    setVal('v-unity-email',   v.UNITY_EMAIL || '');
+    setVal('v-unity-pass',    v.UNITY_PASSWORD || '');
+    setVal('v-stability-key', v.STABILITY_API_KEY || '');
+    setVal('v-openai-key',    v.OPENAI_API_KEY || '');
+    setVal('v-fab-email',     v.FAB_EMAIL || '');
+    setVal('v-fab-pass',      v.FAB_PASSWORD || '');
+    setVal('v-support-email', v.SUPPORT_EMAIL || '');
+    setVal('v-support-url',   v.SUPPORT_URL || '');
+    setVal('v-budget-limit',  v.BUDGET_MONTHLY_LIMIT_USD || '50');
+    setVal('v-headless',      v.HEADLESS || 'false');
+  } catch {}
+}
+
+async function saveVault() {
+  const data = {
+    UNITY_EMAIL:              getVal('v-unity-email'),
+    UNITY_PASSWORD:           getVal('v-unity-pass'),
+    STABILITY_API_KEY:        getVal('v-stability-key'),
+    OPENAI_API_KEY:           getVal('v-openai-key'),
+    FAB_EMAIL:                getVal('v-fab-email'),
+    FAB_PASSWORD:             getVal('v-fab-pass'),
+    SUPPORT_EMAIL:            getVal('v-support-email'),
+    SUPPORT_URL:              getVal('v-support-url'),
+    BUDGET_MONTHLY_LIMIT_USD: getVal('v-budget-limit'),
+    HEADLESS:                 getVal('v-headless'),
   };
-  const up = $('c-pass').value;     if (up) body.UNITY_PASSWORD = up;
-  const fp = $('c-fab-pass').value; if (fp) body.FAB_PASSWORD   = fp;
-  const fe = $('c-fab-email').value;if (fe) body.FAB_EMAIL       = fe;
-
-  await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  $('c-pass').value = ''; $('c-fab-pass').value = '';
-  flash('save-ok', '✓ 保存しました');
+  try {
+    const r = await api('/api/vault', { method:'POST', body: data });
+    toast(`🔒 Vault に ${r.saved.length} 項目を保存しました`);
+    loadBudget();
+  } catch (e) { toast('保存失敗: ' + e.message, true); }
 }
 
-// ── Assets ───────────────────────────────────────────────────────────────
-async function loadAssets() {
-  assets = await api('/api/assets');
-  renderAssets();
+// ─ Budget ─────────────────────────────────────────────────────────────
+async function loadBudget() {
+  try {
+    const b = await api('/api/budget');
+    const pct = b.monthlyLimit > 0 ? Math.min(100, (b.monthlySpend / b.monthlyLimit) * 100) : 0;
+    const cls  = pct < 70 ? 'budget-ok' : pct < 90 ? 'budget-warn' : 'budget-over';
+
+    document.getElementById('budgetSpend').textContent = `$${b.monthlySpend.toFixed(2)}`;
+    const bar = document.getElementById('budgetBar');
+    bar.style.width = pct + '%';
+    bar.className = 'budget-bar ' + cls;
+    document.getElementById('budgetMeta').textContent =
+      `残高: $${b.remaining.toFixed(2)} / 上限 $${b.monthlyLimit.toFixed(2)} (${pct.toFixed(1)}%)`;
+
+    // Main budget bar
+    const mbar = document.getElementById('mainBudgetBar');
+    mbar.style.width = pct + '%';
+    mbar.className = 'budget-bar ' + cls;
+    document.getElementById('mainBudgetText').textContent =
+      `$${b.monthlySpend.toFixed(2)} / $${b.monthlyLimit.toFixed(2)} — ${pct.toFixed(1)}%`;
+
+    if (b.isNearLimit) toast(`⚠ 予算の${pct.toFixed(0)}%を使用中 ($${b.monthlySpend.toFixed(2)}/${b.monthlyLimit})`);
+  } catch {}
 }
 
-function renderAssets() {
-  const list = $('asset-list');
-  list.innerHTML = '';
-  if (assets.length === 0) {
-    list.innerHTML = '<span style="color:var(--dim);font-size:11px">アセットがありません</span>';
-    return;
-  }
-  for (const a of assets) {
-    const div = document.createElement('div');
-    div.className = 'asset-item' + (a.id === activeAssetId ? ' active' : '');
-    div.innerHTML =
-      `<span class="aname">${esc(a.name)}</span>` +
-      `<span class="aplat">${(a.platforms||['unity']).join('/')}</span>` +
-      `<button class="adel" onclick="delAsset('${a.id}',event)">✕</button>`;
-    div.onclick = (e) => { if (!e.target.classList.contains('adel')) selectAsset(a); };
-    list.appendChild(div);
-  }
+async function resetBudget() {
+  if (!confirm('今月の予算記録をリセットしますか？')) return;
+  await api('/api/budget/reset', { method: 'POST', body: {} });
+  toast('予算記録をリセットしました');
+  loadBudget();
 }
 
-function selectAsset(a) {
-  activeAssetId = a.id;
-  $('cfg-asset').value = a.name;
-  selectedPlatforms = a.platforms || ['unity'];
-  updatePlatUI();
-  renderAssets();
-}
-
-async function newAsset() {
-  const name = prompt('アセット名を入力してください:');
-  if (!name) return;
-  const a = await api('/api/assets', { method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ name, platforms: selectedPlatforms }) });
-  assets.push(a);
-  selectAsset(a);
-  renderAssets();
-}
-
-async function delAsset(id, e) {
-  e.stopPropagation();
-  if (!confirm('削除しますか？')) return;
-  await fetch(`/api/assets/${id}`, { method:'DELETE' });
-  assets = assets.filter(a => a.id !== id);
-  if (activeAssetId === id) activeAssetId = null;
-  renderAssets();
-}
-
-// ── Platform toggle ───────────────────────────────────────────────────────
-function togglePlat(plat, cb) {
-  if (cb.checked) {
-    if (!selectedPlatforms.includes(plat)) selectedPlatforms.push(plat);
-  } else {
-    selectedPlatforms = selectedPlatforms.filter(p => p !== plat);
-    if (selectedPlatforms.length === 0) {
-      selectedPlatforms = ['unity'];
-      document.querySelector('#plat-unity input').checked = true;
-    }
-  }
-  updatePlatUI();
-}
-
-function updatePlatUI() {
-  const u = document.querySelector('#plat-unity input');
-  const f = document.querySelector('#plat-fab input');
-  u.checked = selectedPlatforms.includes('unity');
-  f.checked = selectedPlatforms.includes('fab');
-  $('plat-unity').classList.toggle('checked', u.checked);
-  $('plat-fab').classList.toggle('checked', f.checked);
-}
-
-// ── Phase selection ───────────────────────────────────────────────────────
-function setPhase(phase) {
-  selectedPhase = phase;
-  ['generation','packaging','publishing'].forEach(p => {
-    $(`p-${p === 'generation' ? 'gen' : p === 'packaging' ? 'pack' : 'pub'}`)
-      .classList.toggle('selected', p === phase);
-  });
-}
-
-// ── Auth toggle ───────────────────────────────────────────────────────────
-function toggleAuth() {
-  const body  = $('auth-body');
-  const arrow = $('auth-arrow');
-  const open  = body.classList.toggle('open');
-  arrow.textContent = open ? '▼' : '▶';
-}
-
-// ── Pipeline run ──────────────────────────────────────────────────────────
+// ─ Pipeline ───────────────────────────────────────────────────────────
 async function runPipeline() {
-  $('btn-run').disabled = true;
-  $('btn-stop').style.display = '';
-  clearLog();
-  setPipelinePhase(null);
+  const platforms = [];
+  if (document.getElementById('plt-unity').checked) platforms.push('unity');
+  if (document.getElementById('plt-fab').checked)   platforms.push('fab');
+  if (platforms.length === 0) { toast('プラットフォームを選択してください', true); return; }
 
-  // アセット名を DB に保存（変更があれば更新）
-  const name = $('cfg-asset').value.trim();
-  if (name && activeAssetId) {
-    await fetch(`/api/assets/${activeAssetId}`, {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name, platforms: selectedPlatforms })
-    });
-  }
+  const startPhase = document.querySelector('input[name="phase"]:checked')?.value || 'publishing';
+  const provider   = document.querySelector('input[name="provider"]:checked')?.value || 'stability';
+
+  const body = {
+    assetName:  getVal('assetName'),
+    theme:      getVal('theme'),
+    imageCount: parseInt(getVal('imageCount')) || 50,
+    platforms, startPhase,
+    provider: startPhase === 'generation' ? provider : undefined,
+  };
 
   try {
-    const r = await fetch('/api/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        assetName:  name || $('cfg-asset').placeholder,
-        platforms:  selectedPlatforms,
-        startPhase: selectedPhase,
-      }),
-    });
-    if (!r.ok) { alert((await r.json()).error); resetRunUI(); return; }
-  } catch { alert('サーバーへの接続に失敗しました'); resetRunUI(); return; }
-
-  connectSSE();
+    const r = await api('/api/run', { method: 'POST', body });
+    if (r.started) { toast('▶ パイプライン開始！'); clearLogs(); }
+  } catch (e) { toast('実行失敗: ' + e.message, true); }
 }
 
 async function stopPipeline() {
-  await fetch('/api/stop', { method:'POST' });
+  await api('/api/stop', { method: 'POST', body: {} });
+  toast('■ 停止リクエストを送信しました');
 }
 
-// ── Status polling ────────────────────────────────────────────────────────
-async function pollStatus() {
+// ─ Status ─────────────────────────────────────────────────────────────
+async function loadStatus() {
   try {
-    const { status, lastRun, currentPhase } = await api('/api/status');
-    const badge = $('badge');
-    badge.textContent = LABELS[status] ?? status;
-    badge.className   = status;
-    if (lastRun) {
-      $('last-run').textContent = '最終実行: ' + new Date(lastRun).toLocaleString('ja-JP');
-    }
-    if (currentPhase) setPipelinePhase(currentPhase);
-    if (status !== 'running') {
-      resetRunUI();
-      if (status === 'done')  setPipelineAll('done');
-      if (status === 'error') {}
-    }
+    const s = await api('/api/status');
+    updateStatus(s.status, s.currentPhase);
   } catch {}
 }
 
-// ── Pipeline bar ──────────────────────────────────────────────────────────
-function setPipelinePhase(key) {
-  const map = {
-    generation:         'ph-gen',
-    packaging_unity:    'ph-pack',
-    packaging_fab:      'ph-pack',
-    publishing_unity:   'ph-pub',
-    publishing_fab:     'ph-pub',
-  };
-  ['ph-gen','ph-pack','ph-pub'].forEach(id => $(`${id}`).className = 'ph');
-  if (key && map[key]) $(`${map[key]}`).classList.add('active');
+function updateStatus(status, phase) {
+  currentStatus = status;
+  currentPhase  = phase;
+
+  const badge = document.getElementById('statusBadge');
+  badge.className = 'status-badge status-' + status;
+  const labels = { idle:'● IDLE', running:'▶ RUNNING', done:'✓ DONE', error:'✗ ERROR' };
+  badge.textContent = labels[status] || status.toUpperCase();
+
+  if (phase) updatePhaseBar(phase);
+  if (status === 'done') {
+    PHASES.forEach(p => markPhase(p, 'done'));
+    loadScreenshots();
+  }
+  if (status === 'idle' && !phase) PHASES.forEach(p => markPhase(p, ''));
 }
 
-function setPipelineAll(cls) {
-  ['ph-gen','ph-pack','ph-pub'].forEach(id => {
-    const el = $(id);
-    el.className = 'ph';
-    el.classList.add(cls);
+function updatePhaseBar(phase) {
+  const idx = PHASES.indexOf(phase);
+  PHASES.forEach((p, i) => {
+    if (i < idx)       markPhase(p, 'done');
+    else if (i === idx) markPhase(p, 'active');
+    else               markPhase(p, '');
   });
 }
 
-// ── SSE ───────────────────────────────────────────────────────────────────
+function markPhase(phase, state) {
+  const el  = document.getElementById(`ph-${phase}`);
+  const lbl = document.getElementById(`ph-${phase}-label`);
+  if (!el) return;
+  el.className  = 'phase-circle' + (state ? ' ' + state : '');
+  lbl.className = 'phase-label'  + (state ? ' ' + state : '');
+}
+
+// ─ SSE ────────────────────────────────────────────────────────────────
 function connectSSE() {
-  if (evtSrc) evtSrc.close();
-  evtSrc = new EventSource('/api/logs/stream');
-  evtSrc.onmessage = e => {
-    const { type, text, time } = JSON.parse(e.data);
-    const logEl = $('log');
-    logEl.querySelector('.l-empty')?.remove();
-    const span = document.createElement('span');
-    span.className = `l l-${type}`;
-    span.innerHTML = `<span class="l-t">${new Date(time).toLocaleTimeString('ja-JP')}</span>${esc(text)}`;
-    logEl.appendChild(span);
-    logEl.scrollTop = logEl.scrollHeight;
+  if (sseSource) { sseSource.close(); sseSource = null; }
+  sseSource = new EventSource('/api/logs/stream');
+
+  sseSource.onmessage = e => {
+    if (!e.data) return;
+    try { appendLog(JSON.parse(e.data)); } catch {}
+    sseRetryDelay = 1000;
   };
-  evtSrc.onerror = () => { evtSrc?.close(); evtSrc = null; pollStatus(); };
+
+  sseSource.onerror = () => {
+    sseSource.close(); sseSource = null;
+    sseRetryDelay = Math.min(sseRetryDelay * 2, 16000);
+    setTimeout(connectSSE, sseRetryDelay);
+    loadStatus();
+  };
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function clearLog() {
-  $('log').innerHTML = '<span class="l l-empty">▶ パイプラインを実行するとここにログが表示されます。</span>';
-  setPipelinePhase(null);
+function appendLog(entry) {
+  const body = document.getElementById('logBody');
+  const div  = document.createElement('div');
+  div.className = 'log-entry';
+  const t = entry.time ? entry.time.slice(11, 19) : '';
+  div.innerHTML = `<span class="log-time">[${t}]</span><span class="log-${entry.type || 'out'}">${escHtml(entry.text || '')}</span>`;
+  body.appendChild(div);
+  if (body.children.length > 2000) body.removeChild(body.firstChild);
+  body.scrollTop = body.scrollHeight;
+
+  // Update phase bar from log
+  if (entry.type === 'sys') {
+    const m = (entry.text || '').match(/Phase.*?(\w+).*?━/);
+    if (m) updateStatus(currentStatus, m[1].toLowerCase());
+  }
 }
 
-function resetRunUI() {
-  $('btn-run').disabled = false;
-  $('btn-stop').style.display = 'none';
+function clearLogs() {
+  document.getElementById('logBody').innerHTML = '';
+}
+function copyLogs() {
+  const lines = [...document.querySelectorAll('.log-entry')].map(el => el.textContent).join('\n');
+  navigator.clipboard.writeText(lines).then(() => toast('ログをコピーしました'));
 }
 
-function flash(id, msg, ms=2500) {
-  const el = $(id); el.textContent = msg;
-  setTimeout(() => { el.textContent = ''; }, ms);
+// ─ Screenshots ────────────────────────────────────────────────────────
+async function loadScreenshots() {
+  try {
+    const shots = await api('/api/screenshots');
+    const grid  = document.getElementById('shotsGrid');
+    if (shots.length === 0) return;
+    grid.innerHTML = '';
+    shots.forEach(s => {
+      const img = document.createElement('img');
+      img.className = 'shot-img';
+      img.src   = s.url;
+      img.title = s.name;
+      img.onclick = () => window.open(s.url, '_blank');
+      grid.appendChild(img);
+    });
+  } catch {}
 }
 
-const $ = id => document.getElementById(id);
-
-async function api(url, opts) {
-  const r = await fetch(url, opts);
-  return r.json();
+// ─ UI helpers ─────────────────────────────────────────────────────────
+function toggleVault(header) {
+  header.classList.toggle('open');
+  document.getElementById('vaultBody').classList.toggle('open');
+}
+function toggleShots(header) {
+  header.classList.toggle('open');
+  document.getElementById('shotsBody').classList.toggle('open');
+}
+function togglePw(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
 }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let _toastTimer;
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast') || (() => {
+    const el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); return el;
+  })();
+  t.textContent = msg;
+  t.className   = 'toast' + (isError ? ' error' : '');
+  t.style.display = 'block';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    method:  opts.method || 'GET',
+    headers: opts.body ? { 'Content-Type': 'application/json' } : {},
+    body:    opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
 }
 </script>
 </body>
