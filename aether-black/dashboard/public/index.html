@@ -1096,8 +1096,11 @@
 
     <!-- 4. Vault / Credentials (collapsible, initially collapsed) -->
     <div>
+      <!-- 認証情報ステータスバナー -->
+      <div id="vault-status-banner" style="display:none;padding:8px 12px;border-radius:6px;margin-bottom:8px;font-size:11px;"></div>
+
       <div class="collapsible-header" id="vault-header" onclick="toggleVault()">
-        <div class="section-title" style="margin-bottom:0;"><span class="dot"></span>Vault / Credentials</div>
+        <div class="section-title" style="margin-bottom:0;"><span class="dot"></span>Vault / Credentials <span id="vault-ready-badge" style="display:none;font-size:10px;padding:2px 6px;border-radius:10px;background:#27ae60;color:#fff;margin-left:6px;">✓ 設定済</span></div>
         <span class="collapsible-arrow" id="vault-arrow">&#9660;</span>
       </div>
       <div class="collapsible-body" id="vault-body">
@@ -1168,8 +1171,20 @@
         </div>
 
         <button class="btn btn-gold btn-sm" style="width:100%;margin-top:4px;" onclick="saveVault()">
-          金庫に保存
+          🔒 金庫に保存
         </button>
+
+        <div style="margin-top:10px;padding:8px;background:#0a0a18;border:1px solid #2a2a3e;border-radius:6px;">
+          <div style="font-size:10px;color:#6a6a8a;margin-bottom:6px;letter-spacing:0.5px;">AI 生成モード（有料API）</div>
+          <div class="toggle-row" style="margin:0;">
+            <label style="font-size:11px;color:#d0d0e0;">Generation Lock <span id="gen-lock-badge" style="font-size:9px;padding:1px 5px;border-radius:8px;background:#e74c3c;color:#fff;">遮断中</span></label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="vault-gen-lock-off" onchange="toggleGenLock(this)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="font-size:10px;color:#6a6a8a;margin-top:4px;">OFF=API課金遮断（推奨）/ ON=AI生成許可</div>
+        </div>
       </div>
     </div>
 
@@ -1690,9 +1705,62 @@ function fetchVault() {
     if (headlessEl && data.HEADLESS != null) {
       headlessEl.checked = (data.HEADLESS === 'true' || data.HEADLESS === true);
     }
-    appendLog('Vault credentials loaded.', 'sys');
+    var filled = VAULT_FIELDS.filter(function (p) { return data[p[1]] && data[p[1]].length > 0; }).length;
+    appendLog('Vault: ' + filled + '/' + VAULT_FIELDS.length + ' フィールドをロードしました。', 'sys');
   }).catch(function (err) {
     appendLog('Vault load skipped: ' + err.message, 'warn');
+  }).then(function() {
+    return fetchVaultStatus();
+  });
+}
+
+function fetchVaultStatus() {
+  return apiFetch('/api/vault/status').then(function (st) {
+    var banner = document.getElementById('vault-status-banner');
+    var badge  = document.getElementById('vault-ready-badge');
+    var genBadge = document.getElementById('gen-lock-badge');
+    var genToggle = document.getElementById('vault-gen-lock-off');
+
+    if (!banner) return;
+
+    if (st.readyForUnity) {
+      banner.style.display = 'block';
+      banner.style.background = '#0a1f0a';
+      banner.style.border = '1px solid #27ae60';
+      banner.style.color = '#27ae60';
+      banner.innerHTML = '✓ Unity認証情報 設定済み — 申請ボタンが押せます';
+      if (badge) badge.style.display = 'inline';
+    } else {
+      banner.style.display = 'block';
+      banner.style.background = '#1f0a0a';
+      banner.style.border = '1px solid #e74c3c';
+      banner.style.color = '#e74c3c';
+      banner.innerHTML = '⚠ Unity Email / Password が未設定です。以下のフォームに入力して「金庫に保存」してください。';
+      if (badge) badge.style.display = 'none';
+      // 未設定の場合はVaultを自動展開
+      var body = document.getElementById('vault-body');
+      if (body && !body.classList.contains('open')) {
+        document.getElementById('vault-header') && document.getElementById('vault-header').click();
+      }
+    }
+
+    // Generation Lock 表示
+    var locked = st.generationLocked !== false;
+    if (genBadge) {
+      genBadge.textContent = locked ? '遮断中' : '許可';
+      genBadge.style.background = locked ? '#e74c3c' : '#27ae60';
+    }
+    if (genToggle) genToggle.checked = !locked;
+  }).catch(function() {});
+}
+
+function toggleGenLock(checkbox) {
+  var payload = { GENERATION_LOCKED: checkbox.checked ? 'false' : 'true' };
+  apiFetch('/api/vault', { method: 'POST', body: JSON.stringify(payload) }).then(function () {
+    var locked = !checkbox.checked;
+    var badge = document.getElementById('gen-lock-badge');
+    if (badge) { badge.textContent = locked ? '遮断中' : '許可'; badge.style.background = locked ? '#e74c3c' : '#27ae60'; }
+    showToast(locked ? '🔒 AI生成をロックしました（課金なし）' : '⚡ AI生成を許可しました', locked ? 'info' : 'warning');
   });
 }
 
@@ -1708,8 +1776,9 @@ function saveVault() {
   if (headlessChecked) payload.HEADLESS = headlessChecked.checked ? 'true' : 'false';
 
   apiFetch('/api/vault', { method: 'POST', body: JSON.stringify(payload) }).then(function () {
-    showToast('金庫に保存しました。', 'success');
-    appendLog('Vault saved.', 'sys');
+    showToast('🔒 金庫に保存しました。', 'success');
+    appendLog('Vault saved: ' + Object.keys(payload).join(', '), 'sys');
+    fetchVaultStatus();  // バナーを即座に更新
   }).catch(function (err) {
     showToast('保存失敗: ' + err.message, 'error');
     appendLog('Vault save failed: ' + err.message, 'error');
@@ -1901,6 +1970,7 @@ window.toggleScreenshots = toggleScreenshots;
 window.togglePw = togglePw;
 window.closeLightbox = closeLightbox;
 window.closeLightboxOverlay = closeLightboxOverlay;
+window.toggleGenLock = toggleGenLock;
 
 /* ═══════════════════════════════════════
    INIT

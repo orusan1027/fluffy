@@ -33,6 +33,16 @@ class CreationEngine {
    * @returns {{ outputDir, images, cost }}
    */
   async generate({ theme, count, assetName, provider: providerKey }) {
+    // ── Generation Lock（デフォルト有効: 有料API課金を防ぐ）─────────────
+    const locked = config.GENERATION_LOCKED !== 'false';
+    if (locked) {
+      throw new Error(
+        '🔒 [Generation Lock] AI生成は現在ロックされています。\n' +
+        '  売上が発生するまで有料APIへの課金を防ぐため、デフォルトで無効化されています。\n' +
+        '  「Phase 3: 申請のみ」を選択するか、Vault で GENERATION_LOCKED=false に設定してください。',
+      );
+    }
+
     const provKey  = providerKey || config.GENERATION_PROVIDER || 'stability';
     const provider = PROVIDERS[provKey] || PROVIDERS.stability;
 
