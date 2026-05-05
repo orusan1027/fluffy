@@ -1,0 +1,13 @@
+# 認証情報 — 絶対にコミットしない
+.env
+
+# 自動生成ファイル
+node_modules/
+data/assets.json
+portal-agent/node_modules/
+portal-agent/screenshots/
+portal-agent/.env
+
+# Mac アプリ（ローカル生成物）
+launcher/AetherBlack.app/
+portal-agent/AetherBlack.app/

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AETHER BLACK v2.0</title>
+<style>
+:root {
+  --bg:      #07070e;
+  --sur:     #0d0d1a;
+  --bdr:     #1a1a2e;
+  --gold:    #c9a227;
+  --gold2:   #8a6a15;
+  --text:    #d8d8e8;
+  --dim:     #5a5a7a;
+  --ok:      #3dcc7e;
+  --err:     #e05555;
+  --warn:    #e0a030;
+  --fab:     #0099ff;
+  --mono:    'JetBrains Mono','Fira Code','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Segoe UI',sans-serif;height:100vh;display:grid;grid-template-rows:50px 1fr;overflow:hidden;font-size:13px}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header{display:flex;align-items:center;gap:12px;padding:0 18px;background:var(--sur);border-bottom:1px solid var(--bdr);flex-shrink:0}
+.logo{font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--gold)}
+.logo em{color:var(--dim);font-style:normal;font-weight:400;font-size:11px}
+#badge{padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.06em;border:1px solid var(--bdr);color:var(--dim);transition:all .3s}
+#badge.running{color:var(--ok);border-color:var(--ok)}
+#badge.done{color:var(--ok);border-color:var(--ok)}
+#badge.error{color:var(--err);border-color:var(--err)}
+#last-run{margin-left:auto;color:var(--dim);font-size:11px}
+
+/* ── Layout ──────────────────────────────────────────────────────────── */
+.main{display:grid;grid-template-columns:300px 1fr;overflow:hidden}
+.sidebar{border-right:1px solid var(--bdr);padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;background:var(--sur)}
+.right{display:flex;flex-direction:column;overflow:hidden}
+
+/* ── Panel ───────────────────────────────────────────────────────────── */
+.panel{border:1px solid var(--bdr);border-radius:6px;padding:12px}
+.panel-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.panel-title .badge-fab{font-size:9px;background:#0033aa22;color:var(--fab);border:1px solid #004499;padding:1px 5px;border-radius:3px;letter-spacing:0}
+
+/* ── Asset list ──────────────────────────────────────────────────────── */
+.asset-list{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;max-height:120px;overflow-y:auto}
+.asset-item{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.asset-item:hover{background:#111122;border-color:var(--bdr)}
+.asset-item.active{background:#0d1530;border-color:var(--gold2)}
+.asset-item .aname{flex:1;font-size:12px}
+.asset-item .aplat{font-size:10px;color:var(--dim)}
+.asset-item .adel{background:none;border:none;color:var(--dim);cursor:pointer;padding:0 2px;font-size:12px;line-height:1}
+.asset-item .adel:hover{color:var(--err)}
+.btn-new{width:100%;padding:5px;background:var(--bdr);border:1px dashed #333355;border-radius:4px;color:var(--dim);font-size:11px;cursor:pointer;transition:all .15s}
+.btn-new:hover{border-color:var(--gold2);color:var(--gold)}
+
+/* ── Form fields ─────────────────────────────────────────────────────── */
+.field{margin-bottom:8px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:11px;color:var(--dim);margin-bottom:3px}
+.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--bdr);color:var(--text);padding:5px 8px;border-radius:4px;font-size:12px;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--gold2)}
+
+/* ── Platform checkboxes ─────────────────────────────────────────────── */
+.plat-row{display:flex;gap:10px;margin-bottom:2px}
+.plat-opt{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:4px 8px;border:1px solid var(--bdr);border-radius:4px;transition:all .15s;flex:1;justify-content:center}
+.plat-opt:hover{border-color:var(--dim)}
+.plat-opt.unity.checked{border-color:var(--gold);color:var(--gold);background:#1a150a}
+.plat-opt.fab.checked{border-color:var(--fab);color:var(--fab);background:#000e1a}
+.plat-opt input[type=checkbox]{display:none}
+.plat-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+
+/* ── Start phase radio ───────────────────────────────────────────────── */
+.phase-opts{display:flex;flex-direction:column;gap:4px}
+.phase-opt{display:flex;align-items:center;gap:7px;padding:5px 8px;border:1px solid var(--bdr);border-radius:4px;cursor:pointer;transition:all .15s;font-size:12px}
+.phase-opt:hover{border-color:var(--dim)}
+.phase-opt.selected{border-color:var(--gold2);background:#110e05}
+.phase-opt input{display:none}
+.phase-num{width:18px;height:18px;border-radius:3px;background:var(--bdr);color:var(--dim);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.phase-opt.selected .phase-num{background:var(--gold2);color:#000}
+.phase-label{flex:1}
+.phase-sub{color:var(--dim);font-size:10px}
+
+/* ── Auth section (collapsible) ──────────────────────────────────────── */
+.auth-toggle{width:100%;background:none;border:none;color:var(--dim);font-size:11px;cursor:pointer;text-align:left;padding:0;display:flex;align-items:center;gap:4px}
+.auth-toggle:hover{color:var(--text)}
+.auth-body{display:none;margin-top:10px}
+.auth-body.open{display:block}
+.save-ok{font-size:11px;color:var(--ok);min-height:14px;margin-top:5px}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn{display:block;width:100%;padding:9px;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;text-align:center}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-gold{background:var(--gold);color:#07070e;margin-top:2px}
+.btn-save{background:var(--bdr);color:var(--text);font-size:11px;font-weight:400;margin-top:8px}
+.btn-stop{background:#200a0a;color:var(--err);border:1px solid #3a1010;margin-top:7px;display:none}
+
+/* ── Pipeline progress ───────────────────────────────────────────────── */
+.pipeline-bar{display:flex;align-items:center;padding:10px 18px;border-bottom:1px solid var(--bdr);background:var(--sur);gap:0}
+.ph{display:flex;align-items:center;gap:7px;flex:1;padding:5px 10px;border-radius:5px;font-size:11px;transition:all .3s}
+.ph .ph-dot{width:8px;height:8px;border-radius:50%;background:var(--bdr);flex-shrink:0;transition:all .3s}
+.ph .ph-name{color:var(--dim)}
+.ph.active .ph-dot{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.ph.active .ph-name{color:var(--ok)}
+.ph.done .ph-dot{background:var(--gold)}
+.ph.done .ph-name{color:var(--gold)}
+.ph.error .ph-dot{background:var(--err)}
+.ph.error .ph-name{color:var(--err)}
+.ph-arrow{color:var(--bdr);font-size:14px;padding:0 2px}
+
+/* ── Log panel ───────────────────────────────────────────────────────── */
+.log-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--bdr);background:var(--sur)}
+.log-title{font-size:10px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase}
+.btn-clear{background:none;border:1px solid var(--bdr);color:var(--dim);padding:2px 8px;border-radius:3px;cursor:pointer;font-size:10px}
+.btn-clear:hover{border-color:var(--dim)}
+#log{flex:1;padding:12px 16px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.8;background:#04040a}
+.l{display:block;white-space:pre-wrap;word-break:break-all}
+.l-out{color:#b0b0cc}
+.l-err{color:var(--err)}
+.l-sys{color:var(--warn)}
+.l-warn{color:var(--warn);opacity:.8}
+.l-t{color:#222240;margin-right:8px;user-select:none}
+.l-empty{color:#222240;font-style:italic}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">AETHER BLACK <em>v2.0 // Multi-Platform Dashboard</em></span>
+  <span id="badge">IDLE</span>
+  <span id="last-run"></span>
+</header>
+
+<div class="main">
+
+  <!-- ════ SIDEBAR ══════════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- アセット管理 -->
+    <div class="panel">
+      <div class="panel-title">📦 アセット管理</div>
+      <div class="asset-list" id="asset-list"></div>
+      <button class="btn-new" onclick="newAsset()">＋ 新規アセットを追加</button>
+    </div>
+
+    <!-- パイプライン設定 -->
+    <div class="panel">
+      <div class="panel-title">⚙ パイプライン設定</div>
+
+      <div class="field">
+        <label>アセット名</label>
+        <input id="cfg-asset" type="text" placeholder="MyAssetPack">
+      </div>
+
+      <!-- プラットフォーム -->
+      <div class="field">
+        <label>出品プラットフォーム</label>
+        <div class="plat-row">
+          <label class="plat-opt unity checked" id="plat-unity">
+            <input type="checkbox" checked onchange="togglePlat('unity',this)">
+            <span class="plat-dot"></span> Unity
+          </label>
+          <label class="plat-opt fab" id="plat-fab">
+            <input type="checkbox" onchange="togglePlat('fab',this)">
+            <span class="plat-dot"></span>
+            Fab.com <span style="font-size:9px;opacity:.6">準備中</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 開始フェーズ -->
+      <div class="field">
+        <label>開始フェーズ</label>
+        <div class="phase-opts">
+          <label class="phase-opt" id="p-gen" onclick="setPhase('generation')">
+            <input type="radio" name="phase" value="generation">
+            <span class="phase-num">1</span>
+            <span class="phase-label">
+              Generation（画像生成）
+              <span class="phase-sub">— AI APIで画像を自動生成（準備中）</span>
+            </span>
+          </label>
+          <label class="phase-opt" id="p-pack" onclick="setPhase('packaging')">
+            <input type="radio" name="phase" value="packaging">
+            <span class="phase-num">2</span>
+            <span class="phase-label">
+              Packaging（既存画像から）
+              <span class="phase-sub">— Unityシーン作成＋パッケージ化</span>
+            </span>
+          </label>
+          <label class="phase-opt selected" id="p-pub" onclick="setPhase('publishing')">
+            <input type="radio" name="phase" value="publishing" checked>
+            <span class="phase-num">3</span>
+            <span class="phase-label">
+              Publishing（提出のみ）
+              <span class="phase-sub">— 既にパッケージ済みの場合</span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 認証設定（折りたたみ） -->
+    <div class="panel">
+      <button class="auth-toggle" onclick="toggleAuth()">
+        <span id="auth-arrow">▶</span> 認証設定
+      </button>
+      <div class="auth-body" id="auth-body">
+        <div style="height:10px"></div>
+        <div style="font-size:10px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Unity</div>
+        <div class="field"><label>Email</label>
+          <input id="c-email" type="email" placeholder="your@example.com"></div>
+        <div class="field"><label>Password</label>
+          <input id="c-pass" type="password" placeholder="変更する場合のみ入力"></div>
+        <div style="font-size:10px;color:var(--fab);letter-spacing:.08em;text-transform:uppercase;margin:10px 0 8px">
+          Fab.com <span style="color:var(--dim);font-size:9px">（近日対応）</span></div>
+        <div class="field"><label>Email</label>
+          <input id="c-fab-email" type="email" placeholder="your@example.com"></div>
+        <div class="field"><label>Password</label>
+          <input id="c-fab-pass" type="password" placeholder="変更する場合のみ入力"></div>
+        <div style="font-size:10px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin:10px 0 8px">サポート情報</div>
+        <div class="field"><label>Support Email</label>
+          <input id="c-sup-email" type="email" placeholder="support@yoursite.com"></div>
+        <div class="field"><label>Support URL</label>
+          <input id="c-sup-url" type="text" placeholder="https://yoursite.com"></div>
+        <button class="btn btn-save" onclick="saveConfig()">設定を保存</button>
+        <div id="save-ok" class="save-ok"></div>
+      </div>
+    </div>
+
+    <!-- 実行 -->
+    <div class="panel">
+      <div class="panel-title">▶ 実行</div>
+      <button id="btn-run" class="btn btn-gold" onclick="runPipeline()">▶&ensp;パイプラインを実行</button>
+      <button id="btn-stop" class="btn btn-stop" onclick="stopPipeline()">■&ensp;強制停止</button>
+    </div>
+
+  </aside>
+
+  <!-- ════ RIGHT ══════════════════════════════════════════════════════ -->
+  <div class="right">
+
+    <!-- Pipeline progress bar -->
+    <div class="pipeline-bar">
+      <div class="ph" id="ph-gen">
+        <span class="ph-dot"></span>
+        <span class="ph-name">Phase 1: Generation</span>
+      </div>
+      <span class="ph-arrow">›</span>
+      <div class="ph" id="ph-pack">
+        <span class="ph-dot"></span>
+        <span class="ph-name">Phase 2: Packaging</span>
+      </div>
+      <span class="ph-arrow">›</span>
+      <div class="ph" id="ph-pub">
+        <span class="ph-dot"></span>
+        <span class="ph-name">Phase 3: Publishing</span>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-header">
+      <span class="log-title">実行ログ</span>
+      <button class="btn-clear" onclick="clearLog()">クリア</button>
+    </div>
+    <div id="log">
+      <span class="l l-empty">▶ パイプラインを実行するとここにログが表示されます。</span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ────────────────────────────────────────────────────────────────
+let selectedPhase     = 'publishing';
+let selectedPlatforms = ['unity'];
+let assets            = [];
+let activeAssetId     = null;
+let evtSrc            = null;
+
+const LABELS = { idle:'IDLE', running:'実行中...', done:'完了 ✓', error:'エラー ✗' };
+
+// ── Boot ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  await loadAssets();
+  await pollStatus();
+  setInterval(pollStatus, 3000);
+});
+
+// ── Config ────────────────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const cfg = await api('/api/config');
+    if (cfg.ASSET_NAME)    { $('cfg-asset').value    = cfg.ASSET_NAME; }
+    if (cfg.UNITY_EMAIL)   { $('c-email').value      = cfg.UNITY_EMAIL; }
+    if (cfg.FAB_EMAIL)     { $('c-fab-email').value  = cfg.FAB_EMAIL; }
+    if (cfg.SUPPORT_EMAIL) { $('c-sup-email').value  = cfg.SUPPORT_EMAIL; }
+    if (cfg.SUPPORT_URL)   { $('c-sup-url').value    = cfg.SUPPORT_URL; }
+  } catch {}
+}
+
+async function saveConfig() {
+  const body = {
+    ASSET_NAME:    $('cfg-asset').value,
+    UNITY_EMAIL:   $('c-email').value,
+    SUPPORT_EMAIL: $('c-sup-email').value,
+    SUPPORT_URL:   $('c-sup-url').value,
+  };
+  const up = $('c-pass').value;     if (up) body.UNITY_PASSWORD = up;
+  const fp = $('c-fab-pass').value; if (fp) body.FAB_PASSWORD   = fp;
+  const fe = $('c-fab-email').value;if (fe) body.FAB_EMAIL       = fe;
+
+  await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  $('c-pass').value = ''; $('c-fab-pass').value = '';
+  flash('save-ok', '✓ 保存しました');
+}
+
+// ── Assets ───────────────────────────────────────────────────────────────
+async function loadAssets() {
+  assets = await api('/api/assets');
+  renderAssets();
+}
+
+function renderAssets() {
+  const list = $('asset-list');
+  list.innerHTML = '';
+  if (assets.length === 0) {
+    list.innerHTML = '<span style="color:var(--dim);font-size:11px">アセットがありません</span>';
+    return;
+  }
+  for (const a of assets) {
+    const div = document.createElement('div');
+    div.className = 'asset-item' + (a.id === activeAssetId ? ' active' : '');
+    div.innerHTML =
+      `<span class="aname">${esc(a.name)}</span>` +
+      `<span class="aplat">${(a.platforms||['unity']).join('/')}</span>` +
+      `<button class="adel" onclick="delAsset('${a.id}',event)">✕</button>`;
+    div.onclick = (e) => { if (!e.target.classList.contains('adel')) selectAsset(a); };
+    list.appendChild(div);
+  }
+}
+
+function selectAsset(a) {
+  activeAssetId = a.id;
+  $('cfg-asset').value = a.name;
+  selectedPlatforms = a.platforms || ['unity'];
+  updatePlatUI();
+  renderAssets();
+}
+
+async function newAsset() {
+  const name = prompt('アセット名を入力してください:');
+  if (!name) return;
+  const a = await api('/api/assets', { method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, platforms: selectedPlatforms }) });
+  assets.push(a);
+  selectAsset(a);
+  renderAssets();
+}
+
+async function delAsset(id, e) {
+  e.stopPropagation();
+  if (!confirm('削除しますか？')) return;
+  await fetch(`/api/assets/${id}`, { method:'DELETE' });
+  assets = assets.filter(a => a.id !== id);
+  if (activeAssetId === id) activeAssetId = null;
+  renderAssets();
+}
+
+// ── Platform toggle ───────────────────────────────────────────────────────
+function togglePlat(plat, cb) {
+  if (cb.checked) {
+    if (!selectedPlatforms.includes(plat)) selectedPlatforms.push(plat);
+  } else {
+    selectedPlatforms = selectedPlatforms.filter(p => p !== plat);
+    if (selectedPlatforms.length === 0) {
+      selectedPlatforms = ['unity'];
+      document.querySelector('#plat-unity input').checked = true;
+    }
+  }
+  updatePlatUI();
+}
+
+function updatePlatUI() {
+  const u = document.querySelector('#plat-unity input');
+  const f = document.querySelector('#plat-fab input');
+  u.checked = selectedPlatforms.includes('unity');
+  f.checked = selectedPlatforms.includes('fab');
+  $('plat-unity').classList.toggle('checked', u.checked);
+  $('plat-fab').classList.toggle('checked', f.checked);
+}
+
+// ── Phase selection ───────────────────────────────────────────────────────
+function setPhase(phase) {
+  selectedPhase = phase;
+  ['generation','packaging','publishing'].forEach(p => {
+    $(`p-${p === 'generation' ? 'gen' : p === 'packaging' ? 'pack' : 'pub'}`)
+      .classList.toggle('selected', p === phase);
+  });
+}
+
+// ── Auth toggle ───────────────────────────────────────────────────────────
+function toggleAuth() {
+  const body  = $('auth-body');
+  const arrow = $('auth-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '▼' : '▶';
+}
+
+// ── Pipeline run ──────────────────────────────────────────────────────────
+async function runPipeline() {
+  $('btn-run').disabled = true;
+  $('btn-stop').style.display = '';
+  clearLog();
+  setPipelinePhase(null);
+
+  // アセット名を DB に保存（変更があれば更新）
+  const name = $('cfg-asset').value.trim();
+  if (name && activeAssetId) {
+    await fetch(`/api/assets/${activeAssetId}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, platforms: selectedPlatforms })
+    });
+  }
+
+  try {
+    const r = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assetName:  name || $('cfg-asset').placeholder,
+        platforms:  selectedPlatforms,
+        startPhase: selectedPhase,
+      }),
+    });
+    if (!r.ok) { alert((await r.json()).error); resetRunUI(); return; }
+  } catch { alert('サーバーへの接続に失敗しました'); resetRunUI(); return; }
+
+  connectSSE();
+}
+
+async function stopPipeline() {
+  await fetch('/api/stop', { method:'POST' });
+}
+
+// ── Status polling ────────────────────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const { status, lastRun, currentPhase } = await api('/api/status');
+    const badge = $('badge');
+    badge.textContent = LABELS[status] ?? status;
+    badge.className   = status;
+    if (lastRun) {
+      $('last-run').textContent = '最終実行: ' + new Date(lastRun).toLocaleString('ja-JP');
+    }
+    if (currentPhase) setPipelinePhase(currentPhase);
+    if (status !== 'running') {
+      resetRunUI();
+      if (status === 'done')  setPipelineAll('done');
+      if (status === 'error') {}
+    }
+  } catch {}
+}
+
+// ── Pipeline bar ──────────────────────────────────────────────────────────
+function setPipelinePhase(key) {
+  const map = {
+    generation:         'ph-gen',
+    packaging_unity:    'ph-pack',
+    packaging_fab:      'ph-pack',
+    publishing_unity:   'ph-pub',
+    publishing_fab:     'ph-pub',
+  };
+  ['ph-gen','ph-pack','ph-pub'].forEach(id => $(`${id}`).className = 'ph');
+  if (key && map[key]) $(`${map[key]}`).classList.add('active');
+}
+
+function setPipelineAll(cls) {
+  ['ph-gen','ph-pack','ph-pub'].forEach(id => {
+    const el = $(id);
+    el.className = 'ph';
+    el.classList.add(cls);
+  });
+}
+
+// ── SSE ───────────────────────────────────────────────────────────────────
+function connectSSE() {
+  if (evtSrc) evtSrc.close();
+  evtSrc = new EventSource('/api/logs/stream');
+  evtSrc.onmessage = e => {
+    const { type, text, time } = JSON.parse(e.data);
+    const logEl = $('log');
+    logEl.querySelector('.l-empty')?.remove();
+    const span = document.createElement('span');
+    span.className = `l l-${type}`;
+    span.innerHTML = `<span class="l-t">${new Date(time).toLocaleTimeString('ja-JP')}</span>${esc(text)}`;
+    logEl.appendChild(span);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+  evtSrc.onerror = () => { evtSrc?.close(); evtSrc = null; pollStatus(); };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function clearLog() {
+  $('log').innerHTML = '<span class="l l-empty">▶ パイプラインを実行するとここにログが表示されます。</span>';
+  setPipelinePhase(null);
+}
+
+function resetRunUI() {
+  $('btn-run').disabled = false;
+  $('btn-stop').style.display = 'none';
+}
+
+function flash(id, msg, ms=2500) {
+  const el = $(id); el.textContent = msg;
+  setTimeout(() => { el.textContent = ''; }, ms);
+}
+
+const $ = id => document.getElementById(id);
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
