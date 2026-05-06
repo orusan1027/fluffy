@@ -71,10 +71,24 @@ const VAULT_ALLOWED = [
 
 app.get('/api/vault', (req, res) => res.json(vault.getSafe()));
 
+/**
+ * 不正なURL文字列から最初の有効なURLを抽出して正規化する。
+ * 例: "[https://www.fab.com/][https://www.fab.cc]" → "https://www.fab.com"
+ */
+function sanitizeUrl(raw) {
+  if (!raw || typeof raw !== 'string') return raw;
+  const match = raw.match(/https?:\/\/[^\s\[\]"'<>]+/);
+  return match ? match[0].replace(/\/+$/, '') : raw.trim();
+}
+
 app.post('/api/vault', (req, res) => {
   const updates = Object.fromEntries(
     Object.entries(req.body).filter(([k, v]) => VAULT_ALLOWED.includes(k) && v !== ''),
   );
+
+  // URL フィールドを自動正規化（不正フォーマット "[url1][url2]" などを修正）
+  if (updates.SUPPORT_URL) updates.SUPPORT_URL = sanitizeUrl(updates.SUPPORT_URL);
+  if (updates.FAB_PASSWORD) {/* パスワードはそのまま */}
 
   // ① 暗号化 Vault に保存
   vault.set(updates);

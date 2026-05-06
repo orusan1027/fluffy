@@ -2,98 +2,126 @@
 /**
  * lib/auth.js — Unity ID ログイン
  *
- * Unity のログインフローは id.unity.com を経由する。
- * メールアドレス入力 → Next → パスワード入力 → Sign in の2ステップ構成。
+ * Unity のログインフローは以下のいずれかを経由する（地域・時期により変動）:
+ *   - https://login.unity.com/ja/sign-in  （現行・日本語環境）
+ *   - https://login.unity.com/en/sign-in  （英語環境）
+ *   - https://id.unity.com/en/conversations/new  （旧フロー）
+ *
+ * publisher.unity.com へアクセスして自然なリダイレクトに従うことで
+ * どのパターンにも対応する。
  *
  * ⚠️ セレクタの更新方法:
  *   npx playwright codegen https://publisher.unity.com
- *   上記コマンドを実行し、実際にログインした際に記録されるセレクタに差し替える。
  */
 
 const PORTAL_URL = 'https://publisher.unity.com';
 
-// Unity ID ログインページのセレクタ（2024-2025年時点）
+// Unity のログインドメインにマッチ（地域化パス /ja/ /en/ 等を許容）
+const UNITY_LOGIN_URL_RE = /(login|id|auth)\.unity\.com/;
+
 const SEL = {
-  // メールアドレス入力欄
   emailInput: [
-    'input#conversations_create_session_form_email',
+    'input[id*="email"]',
     'input[name="email"]',
     'input[type="email"]',
   ].join(', '),
 
-  // 「Next」ボタン（メール入力後）
   nextButton: [
-    'input[value="Next"]',
     'button:has-text("Next")',
-    'button[type="submit"]',
+    'button:has-text("次へ")',
+    'button:has-text("Continue")',
+    'button:has-text("続ける")',
+    'input[type="submit"]',
   ].join(', '),
 
-  // パスワード入力欄
   passwordInput: [
-    'input#conversations_create_session_form_password',
+    'input[id*="password"]',
     'input[name="password"]',
     'input[type="password"]',
   ].join(', '),
 
-  // 「Sign in」ボタン
   signInButton: [
-    'input[value="Sign in"]',
     'button:has-text("Sign in")',
+    'button:has-text("Sign In")',
+    'button:has-text("ログイン")',
     'button[type="submit"]',
   ].join(', '),
 };
 
 /**
  * publisher.unity.com にアクセスし、Unity ID でログインする。
- * 既にセッションが有効な場合はスキップする。
+ * login.unity.com（現行）/ id.unity.com（旧）どちらのフローにも対応。
+ * 既にセッションが有効な場合はスキップ。
  * @param {import('playwright').Page} page
  */
 async function login(page) {
   await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
-  // id.unity.com へリダイレクトされるか確認
-  let redirected = false;
-  try {
-    await page.waitForURL(/id\.unity\.com/, { timeout: 8_000 });
-    redirected = true;
-  } catch {
-    // リダイレクトなし → 既にポータルにいるかチェック
+  const currentUrl = page.url();
+
+  // ── 既にポータルにいる場合（セッション有効）──────────────────────────
+  if (currentUrl.includes('publisher.unity.com') && !UNITY_LOGIN_URL_RE.test(currentUrl)) {
+    console.log('  → 既存セッションで認証済み（ログインスキップ）');
+    return;
   }
 
-  if (!redirected) {
-    if (page.url().includes('publisher.unity.com')) {
-      console.log('  → 既存セッションで認証済み（ログインスキップ）');
-      return;
+  // ── ログインページへのリダイレクトを待機 ─────────────────────────────
+  if (!UNITY_LOGIN_URL_RE.test(currentUrl)) {
+    try {
+      await page.waitForURL(UNITY_LOGIN_URL_RE, { timeout: 10_000 });
+    } catch {
+      console.log(`  → ログインURL待機タイムアウト（現URL: ${page.url()}）— フォームを直接検索`);
     }
-    throw new Error(
-      `予期しないURLです: ${page.url()}\n` +
-      '  ポータルまたはログインページへのアクセスに失敗しました。'
-    );
   }
 
-  console.log('  → Unity ID 認証ページを検出、認証を開始します');
+  console.log(`  → ログインページ確認: ${page.url()}`);
   await _performLogin(page);
 
-  // ポータルへのリダイレクト完了を待つ
-  await page.waitForURL(/publisher\.unity\.com/, { timeout: 30_000 });
-  console.log('  → ログイン完了');
+  // ── ポータルへのリダイレクト完了を待つ ───────────────────────────────
+  await page.waitForURL(/publisher\.unity\.com/, { timeout: 40_000 }).catch(async (err) => {
+    throw new Error(
+      `ログイン後のリダイレクトがタイムアウトしました。\n  現在のURL: ${page.url()}\n` +
+      `  2FAが有効な場合は HEADLESS=false で実行してください。\n  原因: ${err.message}`
+    );
+  });
+
+  console.log(`  → ログイン完了: ${page.url()}`);
 }
 
 async function _performLogin(page) {
   // ── Step 1: メールアドレス ─────────────────────────────────────────
-  await page.waitForSelector(SEL.emailInput, { timeout: 15_000 });
-  await page.fill(SEL.emailInput, process.env.UNITY_EMAIL);
+  try {
+    await page.waitForSelector(SEL.emailInput, { timeout: 15_000 });
+  } catch {
+    throw new Error(
+      `メールアドレス入力欄が見つかりません。\n  現在のURL: ${page.url()}\n` +
+      `  Unity のログインページが変更された可能性があります。`
+    );
+  }
+  await page.locator(SEL.emailInput).first().fill(process.env.UNITY_EMAIL);
+  console.log(`  → Email入力: ${process.env.UNITY_EMAIL}`);
 
-  // 「Next」ボタン: 複数ある場合は最後のものをクリック（ページによって位置が異なる）
-  await page.locator(SEL.nextButton).last().click();
+  const nextBtn = page.locator(SEL.nextButton).first();
+  await nextBtn.waitFor({ timeout: 8_000 });
+  await nextBtn.click();
 
   // ── Step 2: パスワード ────────────────────────────────────────────
-  await page.waitForSelector(SEL.passwordInput, { timeout: 15_000 });
-  await page.fill(SEL.passwordInput, process.env.UNITY_PASSWORD);
-  await page.locator(SEL.signInButton).last().click();
+  try {
+    await page.waitForSelector(SEL.passwordInput, { timeout: 15_000 });
+  } catch {
+    throw new Error(
+      `パスワード入力欄が見つかりません。\n  現在のURL: ${page.url()}\n` +
+      `  メールアドレスが正しいか確認してください。`
+    );
+  }
+  await page.locator(SEL.passwordInput).first().fill(process.env.UNITY_PASSWORD);
+  console.log('  → パスワード入力完了');
 
-  // 2FA が有効な場合、ここで手動操作が必要になる可能性がある
-  // その場合は HEADLESS=false で実行し、コード入力後に自動で続行される
+  // Sign In をクリック（最後のボタンを優先してサブミット）
+  const signInBtn = page.locator(SEL.signInButton).last();
+  await signInBtn.waitFor({ timeout: 8_000 });
+  await signInBtn.click();
+  console.log('  → Sign In クリック済み — リダイレクト待機中...');
 }
 
 module.exports = { login };
