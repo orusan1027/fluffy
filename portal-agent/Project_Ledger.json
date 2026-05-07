@@ -1,0 +1,21 @@
+{
+  "updatedAt": "2026-05-07T00:00:00.000Z",
+  "tasks": {
+    "dmm_crawler": {
+      "lastRun": "",
+      "nextRun": "",
+      "status": "pending",
+      "message": "未実行 — DMM_AFFILIATE_ID を設定してから node crawlers/dmm/index.ts を実行してください",
+      "itemsProcessed": 0,
+      "errors": []
+    },
+    "dlsite_crawler": {
+      "lastRun": "",
+      "nextRun": "",
+      "status": "pending",
+      "message": "未実行 — node crawlers/dlsite/index.ts を実行してください",
+      "itemsProcessed": 0,
+      "errors": []
+    }
+  }
+}
