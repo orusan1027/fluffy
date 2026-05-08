@@ -171,14 +171,19 @@ app.get('/api/status', (req, res) => res.json({
 app.post('/api/run', (req, res) => {
   if (runState.status === 'running') return res.status(409).json({ error: '既に実行中です' });
 
+  // ダッシュボードは数値 (1/2/3) で送ってくる場合があるため文字列名に正規化
+  const PHASE_MAP = { 1: 'generation', 2: 'packaging', 3: 'publishing' };
+
   const {
     assetName    = 'MyAsset',
     platforms    = ['unity'],
-    startPhase   = 'publishing',
     theme        = 'cyberpunk',
     imageCount   = 10,
     imagesFolder, provider,
   } = req.body;
+
+  const rawPhase  = req.body.startPhase ?? 'publishing';
+  const startPhase = PHASE_MAP[rawPhase] || rawPhase || 'publishing';
 
   // ASSET_NAME を process.env と .env に同期（submit.js の REQUIRED チェック対策）
   process.env.ASSET_NAME = assetName;
